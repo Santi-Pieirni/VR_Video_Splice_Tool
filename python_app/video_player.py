@@ -1,25 +1,22 @@
-import vlc
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QSlider, QApplication
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QCoreApplication, QMetaObject
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QSlider
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QCoreApplication
+from vlc_wrapper import VLCWrapper
+from timestamp_manager import TimestampManager
 
 class VideoPlayer(QWidget):
     in_point_set = pyqtSignal(str)  # Timestamp string when in point is set
     out_point_set = pyqtSignal(str)  # Timestamp string when out point is set
     position_changed = pyqtSignal(float)  # Current position in seconds
-    video_ended = pyqtSignal()  # Signal when video ends
     
     def __init__(self):
         super().__init__()
-        self.instance = None
-        self.player = None
-        self.media = None
-        self.current_file = None
-        self.is_playing = False
-        self.duration = 0
         
-        # Timestamps for editing
-        self.in_points = []
-        self.out_points = []
+        # Initialize components
+        self.vlc = VLCWrapper()
+        self.timestamp_manager = TimestampManager()
+        
+        # State variables
+        self.was_playing = False
         
         # Timer for position updates
         self.position_timer = QTimer()
@@ -27,6 +24,13 @@ class VideoPlayer(QWidget):
         
         self.init_ui()
         
+        # Connect VLC signals
+        self.vlc.video_ended.connect(self.reset_player_state)
+        
+        # Connect timestamp manager signals
+        self.timestamp_manager.in_point_set.connect(self.in_point_set)
+        self.timestamp_manager.out_point_set.connect(self.out_point_set)
+    
     def init_ui(self):
         layout = QVBoxLayout()
         self.setLayout(layout)
@@ -84,130 +88,66 @@ class VideoPlayer(QWidget):
         shortcuts_label.setStyleSheet("color: gray; font-size: 10px;")
         layout.addWidget(shortcuts_label)
         
-        # Initialize VLC instance
-        self.init_vlc()
-        
-        # Connect signals
-        self.video_ended.connect(self.reset_player_state)
-    
-    def init_vlc(self):
-        """Initialize VLC instance"""
-        try:
-            # Create VLC instance
-            self.instance = vlc.Instance()
-            self.player = self.instance.media_player_new()
-            
-            # Set the video widget to render to
-            # This works on Windows with VLC's Qt support
-            self.player.set_hwnd(self.video_widget.winId())
-            
-            # Connect event callbacks (use thread-safe approach)
-            events = self.player.event_manager()
-            events.event_attach(vlc.EventType.MediaPlayerEndReached, self.on_end_reached)
-            # Don't attach time changed event - it causes threading issues
-            # We use our own timer for position updates instead
-            
-            print("VLC initialized successfully")
-            
-        except Exception as e:
-            print(f"Error initializing VLC: {e}")
-            self.status_label.setText(f"VLC Error: {str(e)}")
+        # Initialize VLC
+        self.vlc.init_vlc(self.video_widget)
     
     def load_video(self, file_path):
-        """Load a video file using VLC"""
-        self.current_file = file_path
+        """Load a video file"""
+        success = self.vlc.load_video(file_path)
         
-        try:
-            # Create media from file
-            self.media = self.instance.media_new(file_path)
-            self.player.set_media(self.media)
-            
-            # Parse the media to get duration
-            self.media.parse()
-            self.duration = self.player.get_length()
-            
-            # Handle VLC error case (-1 means unknown duration)
-            if self.duration <= 0:
-                print(f"Player returned invalid duration: {self.duration}s")
-                # Try getting duration from media object (returns milliseconds)
-                media_duration = self.media.get_duration()
-                print(f"Media duration: {media_duration}ms")
-                
-                if media_duration > 0:
-                    self.duration = media_duration / 1000  # Convert to seconds
-                else:
-                    print("Could not determine duration, using fallback")
-                    self.duration = 3600  # 1 hour fallback
-            
-            # Update UI
-            self.video_widget.setStyleSheet("background-color: #000; min-height: 400px;")  # Clear any text
-            self.status_label.setText(f"Duration: {self.duration:.1f}s")
-            
-            print(f"Video loaded: {file_path}")
-            print(f"Duration: {self.duration:.2f}s")
-            
-            return True
-            
-        except Exception as e:
-            print(f"Error loading video: {e}")
-            self.status_label.setText(f"Failed to load video: {str(e)}")
-            return False
+        if success:
+            self.video_widget.setStyleSheet("background-color: #000; min-height: 400px;")
+            self.status_label.setText(f"Duration: {self.vlc.get_duration():.1f}s")
+        else:
+            self.status_label.setText("Failed to load video")
+        
+        return success
     
     def toggle_playback(self):
         """Toggle between play and pause"""
-        if self.player is None:
-            return
-            
-        if self.is_playing:
+        if self.vlc.is_playing:
             self.pause_playback()
         else:
             self.start_playback()
     
     def start_playback(self):
         """Start video playback"""
-        if self.player is None:
-            return
-            
-        self.player.play()
-        self.is_playing = True
-        self.play_button.setText("Pause")
-        
-        # Start position update timer
-        self.position_timer.start(100)  # Update every 100ms
+        if self.vlc.start_playback():
+            self.play_button.setText("Pause")
+            self.position_timer.start(100)  # Update every 100ms
     
     def pause_playback(self):
         """Pause video playback"""
-        if self.player is None:
-            return
-            
-        self.player.pause()
-        self.is_playing = False
-        self.play_button.setText("Play")
-        self.position_timer.stop()
+        if self.vlc.pause_playback():
+            self.play_button.setText("Play")
+            self.position_timer.stop()
     
     def stop_playback(self):
         """Stop video playback and reset to beginning"""
         self.pause_playback()
-        if self.player is not None:
-            self.player.stop()
-            self.update_time_display()
-            self.seek_slider.setValue(0)
+        self.vlc.stop_playback()
+        self.update_time_display()
+        self.seek_slider.setValue(0)
+    
+    def update_playback_button(self):
+        """Update play/pause button text based on state"""
+        if self.vlc.is_playing:
+            self.play_button.setText("Pause")
+        else:
+            self.play_button.setText("Play")
     
     def update_position(self):
         """Update position display and slider"""
-        if self.player is None:
-            return
-            
         try:
-            # Get current position in milliseconds
-            current_time = self.player.get_time() / 1000  # Convert to seconds
+            current_time = self.vlc.get_current_time()
             
             # Update time display
             self.update_time_display()
             
             # Update slider
-            if self.duration > 0:
-                position = int((current_time / self.duration) * 1000)
+            duration = self.vlc.get_duration()
+            if duration > 0:
+                position = int((current_time / duration) * 1000)
                 self.seek_slider.blockSignals(True)
                 self.seek_slider.setValue(position)
                 self.seek_slider.blockSignals(False)
@@ -220,18 +160,12 @@ class VideoPlayer(QWidget):
     
     def update_time_display(self):
         """Update the time display label"""
-        if self.player is None:
-            return
-            
         try:
-            current_time = self.player.get_time() / 1000  # Convert to seconds
-            
-            # Handle VLC returning -1 for current time (error state)
-            if current_time < 0:
-                current_time = 0
+            current_time = self.vlc.get_current_time()
+            duration = self.vlc.get_duration()
             
             current_str = self.format_time(current_time)
-            total_str = self.format_time(self.duration)
+            total_str = self.format_time(duration)
             self.time_label.setText(f"{current_str} / {total_str}")
         except:
             pass
@@ -245,7 +179,7 @@ class VideoPlayer(QWidget):
     
     def on_seek_start(self):
         """Called when user starts dragging the slider"""
-        self.was_playing = self.is_playing
+        self.was_playing = self.vlc.is_playing
         self.pause_playback()
     
     def on_seek_end(self):
@@ -260,46 +194,30 @@ class VideoPlayer(QWidget):
             self.seek_to_slider()
     
     def seek_to_slider(self):
-        """Seek to the position indicated by the slider using position (0.0-1.0)"""
-        if self.player is None:
-            return
-            
+        """Seek to the position indicated by the slider"""
         try:
             position = self.seek_slider.value()
             # Convert slider (0-1000) to VLC position (0.0-1.0)
             vlc_position = position / 1000.0
             
-            # Use set_position instead of set_time - often more reliable
-            self.player.set_position(vlc_position)
-            
-            # Small delay to let VLC process the seek
-            QCoreApplication.processEvents()
-            
+            self.vlc.seek_to_position(vlc_position)
             self.update_time_display()
             
         except Exception as e:
             print(f"Seek error: {e}")
-            # If seek fails, just update the display without actually seeking
     
     def seek_to_time(self, seconds):
         """Seek to a specific time in seconds"""
-        if self.player is None:
-            return
-            
-        try:
-            # VLC uses milliseconds
-            self.player.set_time(int(seconds * 1000))
+        if self.vlc.seek_to_time(seconds):
             self.update_time_display()
             
             # Update slider
-            if self.duration > 0:
-                position = int((seconds / self.duration) * 1000)
+            duration = self.vlc.get_duration()
+            if duration > 0:
+                position = int((seconds / duration) * 1000)
                 self.seek_slider.blockSignals(True)
                 self.seek_slider.setValue(position)
                 self.seek_slider.blockSignals(False)
-                
-        except Exception as e:
-            print(f"Time seek error: {e}")
     
     def keyPressEvent(self, event):
         """Handle keyboard shortcuts"""
@@ -318,113 +236,79 @@ class VideoPlayer(QWidget):
     
     def jump_back(self):
         """Jump back 15 seconds"""
-        if self.player is None:
-            return
-        self.jump_by_seconds(-15)
-    
-    def jump_forward(self):
-        """Jump forward 15 seconds"""
-        if self.player is None:
-            return
-        self.jump_by_seconds(15)
-    
-    def jump_by_seconds(self, seconds):
-        """Jump by a specific number of seconds with pause-first approach"""
-        if self.player is None:
-            return
-            
-        try:
-            length = self.player.get_length()
-            current = self.player.get_time()
-            
-            print(f"Current={current} Length={length}")
-            
-            if current < 0 or length <= 0:
-                return
-
-            new_time = max(0, min(length, current + seconds * 1000))
-            print(f"Seeking to {new_time}")
-
-            self.player.set_time(int(new_time))
-
-            # Update display
+        self.was_playing = self.vlc.is_playing
+        self.pause_playback()
+        
+        if self.vlc.jump_by_seconds(-15):
             QCoreApplication.processEvents()
             self.update_time_display()
             
-            # Update slider (convert milliseconds to 0-1000 range)
-            slider_position = int((new_time / length) * 1000) if length > 0 else 0
-            self.seek_slider.blockSignals(True)
-            self.seek_slider.setValue(slider_position)
-            self.seek_slider.blockSignals(False)
+            # Update slider
+            current_time = self.vlc.get_current_time()
+            duration = self.vlc.get_duration()
+            if duration > 0:
+                position = int((current_time / duration) * 1000)
+                self.seek_slider.blockSignals(True)
+                self.seek_slider.setValue(position)
+                self.seek_slider.blockSignals(False)
+        
+        if self.was_playing:
+            self.vlc.start_playback()
+    
+    def jump_forward(self):
+        """Jump forward 15 seconds"""
+        self.was_playing = self.vlc.is_playing
+        self.pause_playback()
+        
+        if self.vlc.jump_by_seconds(15):
+            QCoreApplication.processEvents()
+            self.update_time_display()
             
-            # Resume if it was playing
-            if self.was_playing:
-                self.player.play()
-            
-        except Exception as e:
-            print(f"Jump error: {e}")
+            # Update slider
+            current_time = self.vlc.get_current_time()
+            duration = self.vlc.get_duration()
+            if duration > 0:
+                position = int((current_time / duration) * 1000)
+                self.seek_slider.blockSignals(True)
+                self.seek_slider.setValue(position)
+                self.seek_slider.blockSignals(False)
+        
+        if self.was_playing:
+            self.vlc.start_playback()
     
     def set_in_point(self):
         """Set in point at current position"""
-        if self.player is None:
-            return
-            
-        current_time = self.player.get_time() / 1000  # Convert to seconds
+        current_time = self.vlc.get_current_time()
         timestamp = self.format_time(current_time)
         
-        self.in_points.append(timestamp)
-        self.in_point_set.emit(timestamp)
-        
-        print(f"In point set at: {timestamp}")
+        self.timestamp_manager.set_in_point(timestamp)
         self.status_label.setText(f"In point: {timestamp}")
     
     def set_out_point(self):
         """Set out point at current position"""
-        if self.player is None:
-            return
-            
-        current_time = self.player.get_time() / 1000  # Convert to seconds
+        current_time = self.vlc.get_current_time()
         timestamp = self.format_time(current_time)
         
-        self.out_points.append(timestamp)
-        self.out_point_set.emit(timestamp)
-        
-        print(f"Out point set at: {timestamp}")
+        self.timestamp_manager.set_out_point(timestamp)
         self.status_label.setText(f"Out point: {timestamp}")
     
-    def on_end_reached(self, event):
-        """Handle video end reached (thread-safe)"""
-        print("Video ended")
-        # Emit signal to trigger reset in main thread
-        self.video_ended.emit()
-    
     def reset_player_state(self):
-        """Reset player state after end (call from main thread)"""
+        """Reset player state after end"""
         print("Resetting player state")
         self.pause_playback()
-        if self.player is not None:
-            self.player.stop()
-            # Reset to beginning
-            self.player.set_time(0)
-            self.current_frame = 0
-            self.update_time_display()
-            self.seek_slider.setValue(0)
+        self.vlc.reset_player_state()
+        self.update_time_display()
+        self.seek_slider.setValue(0)
     
     def get_timestamps(self):
         """Get all recorded in/out timestamps"""
-        return {
-            'in_points': self.in_points,
-            'out_points': self.out_points
-        }
+        return self.timestamp_manager.get_timestamps()
     
     def clear_timestamps(self):
         """Clear all recorded timestamps"""
-        self.in_points = []
-        self.out_points = []
-        print("Timestamps cleared")
+        self.timestamp_manager.clear_timestamps()
     
     def cleanup(self):
-        """Clean up VLC resources"""
-        if self.player is not None:
-            self.player.stop()
+        """Clean up resources"""
+        self.vlc.cleanup()
         self.position_timer.stop()
