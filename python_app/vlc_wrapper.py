@@ -51,7 +51,7 @@ class VLCWrapper(QObject):
             
             # Parse the media to get duration
             self.media.parse()
-            self.duration = self.player.get_length()
+            self.duration = self.player.get_length() / 1000
             
             # Handle VLC error case (-1 means unknown duration)
             if self.duration <= 0:
