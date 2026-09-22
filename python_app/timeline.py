@@ -7,6 +7,7 @@ class TimelineWidget(QWidget):
     """Visual timeline widget showing video duration and segment markers"""
     
     marker_clicked = pyqtSignal(int, str)  # marker_index, marker_type (in/out)
+    position_clicked = pyqtSignal(float)  # position 0.0-1.0 when timeline is clicked
     
     def __init__(self):
         super().__init__()
@@ -29,6 +30,23 @@ class TimelineWidget(QWidget):
     def clear_markers(self):
         """Clear all markers"""
         self.markers = []
+        self.update()
+    
+    def rebuild_markers_from_segments(self, segments):
+        """Rebuild markers from current segments (syncs timeline with segment state)"""
+        self.markers = []
+        for in_point, out_point in segments:
+            # Convert timestamp strings to positions if possible
+            # For now, we'll need to handle this differently
+            # This method will be called with actual positions from the main app
+            pass
+    
+    def sync_markers_with_segments(self, segment_positions):
+        """Sync markers with segment positions (list of (in_position, out_position) tuples)"""
+        self.markers = []
+        for in_pos, out_pos in segment_positions:
+            self.markers.append((in_pos, 'in'))
+            self.markers.append((out_pos, 'out'))
         self.update()
     
     def set_current_position(self, position):
@@ -113,7 +131,7 @@ class TimelineWidget(QWidget):
         
         # If no marker clicked, emit position for seeking
         position = max(0, min(1, position))
-        self.parent().parent().seek_to_position(position) if hasattr(self.parent(), 'parent') else None
+        self.position_clicked.emit(position)
 
 
 class SegmentListWidget(QWidget):
@@ -122,6 +140,7 @@ class SegmentListWidget(QWidget):
     segment_selected = pyqtSignal(int)  # Segment index
     segment_deleted = pyqtSignal(int)  # Segment index
     segment_moved = pyqtSignal(int, int)  # from_index, to_index
+    all_segments_cleared = pyqtSignal()  # All segments cleared
     
     def __init__(self):
         super().__init__()
@@ -181,10 +200,15 @@ class SegmentListWidget(QWidget):
             self.segments.pop(index)
             self.update_list()
     
-    def clear_all_segments(self):
-        """Clear all segments"""
+    def _clear_segments_internal(self):
+        """Internal clear without emitting signal (for programmatic updates)"""
         self.segments = []
         self.update_list()
+    
+    def clear_all_segments(self):
+        """Clear all segments (user-initiated, emits signal)"""
+        self._clear_segments_internal()
+        self.all_segments_cleared.emit()
     
     def update_list(self):
         """Update the list widget with current segments"""
@@ -223,6 +247,7 @@ class TimelinePanel(QWidget):
     segment_deleted = pyqtSignal(int)  # Segment index
     segment_selected = pyqtSignal(int)  # Segment index
     seek_to_position = pyqtSignal(float)  # Position 0.0-1.0
+    all_segments_cleared = pyqtSignal()  # All segments cleared
     
     def __init__(self):
         super().__init__()
@@ -239,12 +264,14 @@ class TimelinePanel(QWidget):
         
         self.timeline = TimelineWidget()
         self.timeline.marker_clicked.connect(self.on_marker_clicked)
+        self.timeline.position_clicked.connect(self.on_position_clicked)
         layout.addWidget(self.timeline)
         
         # Segment list
         self.segment_list = SegmentListWidget()
         self.segment_list.segment_selected.connect(self.segment_selected)
         self.segment_list.segment_deleted.connect(self.segment_deleted)
+        self.segment_list.all_segments_cleared.connect(self.on_all_segments_cleared)
         layout.addWidget(self.segment_list)
     
     def set_duration(self, duration):
@@ -258,14 +285,14 @@ class TimelinePanel(QWidget):
     
     def update_segment_list(self, segments):
         """Update segment list with new segments"""
-        self.segment_list.clear_all_segments()
+        self.segment_list._clear_segments_internal()
         for in_point, out_point in segments:
             self.segment_list.add_segment(in_point, out_point)
     
     def clear_all(self):
         """Clear timeline markers and segment list"""
         self.timeline.clear_markers()
-        self.segment_list.clear_all_segments()
+        self.segment_list._clear_segments_internal()
     
     def update_current_position(self, position):
         """Update current position indicator on timeline"""
@@ -276,6 +303,19 @@ class TimelinePanel(QWidget):
         # Future enhancement: seek to marker position
         pass
     
+    def on_position_clicked(self, position):
+        """Handle position click on timeline"""
+        self.seek_to_position.emit(position)
+    
+    def on_all_segments_cleared(self):
+        """Handle when all segments are cleared"""
+        self.timeline.clear_markers()
+        self.all_segments_cleared.emit()
+    
     def get_segments(self):
         """Get all segments from segment list"""
         return self.segment_list.get_segments()
+    
+    def sync_timeline_with_segments(self, segment_positions):
+        """Sync timeline markers with current segment positions"""
+        self.timeline.sync_markers_with_segments(segment_positions)

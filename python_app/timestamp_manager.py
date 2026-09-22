@@ -48,3 +48,12 @@ class TimestampManager(QObject):
         for i in range(min(len(self.in_points), len(self.out_points))):
             segments.append((self.in_points[i], self.out_points[i]))
         return segments
+    
+    def delete_segment(self, index):
+        """Delete segment at given index (removes both in and out points)"""
+        if 0 <= index < len(self.in_points) and 0 <= index < len(self.out_points):
+            self.in_points.pop(index)
+            self.out_points.pop(index)
+            print(f"Segment {index} deleted")
+            return True
+        return False

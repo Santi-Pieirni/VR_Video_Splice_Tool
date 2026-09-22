@@ -72,6 +72,7 @@ class VRSplicerApp(QMainWindow):
         self.timeline_panel.segment_selected.connect(self.on_segment_selected)
         self.timeline_panel.segment_deleted.connect(self.on_segment_deleted)
         self.timeline_panel.seek_to_position.connect(self.on_timeline_seek)
+        self.timeline_panel.all_segments_cleared.connect(self.on_all_segments_cleared)
         layout.addWidget(self.timeline_panel)
         
     def select_video_file(self):
@@ -97,6 +98,9 @@ class VRSplicerApp(QMainWindow):
                 
                 # Clear previous timeline data
                 self.timeline_panel.clear_all()
+                
+                # Clear timestamps
+                self.video_player.clear_timestamps()
             else:
                 print(f"Failed to load video: {file_path}")
     
@@ -105,27 +109,20 @@ class VRSplicerApp(QMainWindow):
         print(f"In point recorded: {timestamp}")
         self.progress_label.setText(f"In point: {timestamp}")
         
-        # Update timeline
-        current_time = self.video_player.vlc.get_current_time()
-        duration = self.video_player.vlc.get_duration()
-        if duration > 0:
-            position = current_time / duration
-            self.timeline_panel.timeline.add_marker(position, 'in')
+        # Don't add individual markers - only show complete segments
+        # Timeline will be updated when complete segments are formed
     
     def on_out_point_set(self, timestamp):
         """Handle out point set by video player"""
         print(f"Out point recorded: {timestamp}")
         self.progress_label.setText(f"Out point: {timestamp}")
         
-        # Update timeline
-        current_time = self.video_player.vlc.get_current_time()
-        duration = self.video_player.vlc.get_duration()
-        if duration > 0:
-            position = current_time / duration
-            self.timeline_panel.timeline.add_marker(position, 'out')
-            
-            # Update segment list when we have a complete pair
-            self.update_segment_list()
+        # Update segment list and timeline when we have a complete pair
+        self.update_segment_list()
+        self.sync_timeline_with_current_segments()
+        
+        # Ensure video player maintains focus for I/O key events
+        self.video_player.grab_focus()
     
     def on_position_changed(self, position):
         """Handle position change from video player"""
@@ -138,12 +135,72 @@ class VRSplicerApp(QMainWindow):
         """Handle segment selection from timeline"""
         print(f"Segment {index} selected")
         # Future: seek to segment start
+        
+        # Return focus to video player for I/O key events
+        self.video_player.grab_focus()
     
     def on_segment_deleted(self, index):
         """Handle segment deletion from timeline"""
         print(f"Segment {index} deleted")
-        # Update timestamp manager to reflect deletion
-        # This would require extending TimestampManager to support deletion
+        
+        # Remove from timestamp manager
+        self.video_player.timestamp_manager.delete_segment(index)
+        
+        # Rebuild timeline markers from remaining segments
+        self.sync_timeline_with_current_segments()
+        
+        # Return focus to video player for I/O key events
+        self.video_player.grab_focus()
+    
+    def on_all_segments_cleared(self):
+        """Handle when all segments are cleared"""
+        print("All segments cleared")
+        
+        # Clear timestamp manager
+        self.video_player.clear_timestamps()
+        
+        # Timeline markers are already cleared by the panel
+        self.progress_label.setText("All segments cleared")
+        
+        # Return focus to video player for I/O key events
+        self.video_player.grab_focus()
+    
+    def sync_timeline_with_current_segments(self):
+        """Sync timeline markers with current segments in timestamp manager"""
+        timestamps = self.video_player.get_timestamps()
+        in_points = timestamps['in_points']
+        out_points = timestamps['out_points']
+        
+        # Convert timestamps to positions
+        segment_positions = []
+        duration = self.video_player.vlc.get_duration()
+        
+        if duration > 0:
+            for i in range(min(len(in_points), len(out_points))):
+                in_time = self.parse_timestamp_to_seconds(in_points[i])
+                out_time = self.parse_timestamp_to_seconds(out_points[i])
+                
+                in_position = in_time / duration
+                out_position = out_time / duration
+                
+                segment_positions.append((in_position, out_position))
+        
+        # Sync timeline with new positions
+        self.timeline_panel.sync_timeline_with_segments(segment_positions)
+        
+        # Update segment list
+        self.update_segment_list()
+    
+    def parse_timestamp_to_seconds(self, timestamp):
+        """Parse HH:MM:SS timestamp to seconds"""
+        try:
+            parts = timestamp.split(':')
+            if len(parts) == 3:
+                h, m, s = map(int, parts)
+                return h * 3600 + m * 60 + s
+            return 0
+        except:
+            return 0
     
     def on_timeline_seek(self, position):
         """Handle seek from timeline"""

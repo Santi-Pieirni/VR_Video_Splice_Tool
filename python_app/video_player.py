@@ -35,6 +35,9 @@ class VideoPlayer(QWidget):
         layout = QVBoxLayout()
         self.setLayout(layout)
         
+        # Make this widget focusable to receive keyboard events
+        self.setFocusPolicy(Qt.StrongFocus)
+        
         # Video widget (VLC will render here)
         self.video_widget = QWidget()
         self.video_widget.setStyleSheet("background-color: #000; min-height: 400px;")
@@ -312,3 +315,7 @@ class VideoPlayer(QWidget):
         """Clean up resources"""
         self.vlc.cleanup()
         self.position_timer.stop()
+    
+    def grab_focus(self):
+        """Grab keyboard focus for I/O key events"""
+        self.setFocus()
