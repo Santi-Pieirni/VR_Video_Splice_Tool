@@ -206,6 +206,10 @@ class VideoPlayer(QWidget):
             self.vlc.seek_to_position(vlc_position)
             self.update_time_display()
             
+            # Emit position signal for timeline UI
+            current_time = self.vlc.get_current_time()
+            self.position_changed.emit(current_time)
+            
         except Exception as e:
             print(f"Seek error: {e}")
     
@@ -221,6 +225,9 @@ class VideoPlayer(QWidget):
                 self.seek_slider.blockSignals(True)
                 self.seek_slider.setValue(position)
                 self.seek_slider.blockSignals(False)
+            
+            # Emit position signal for timeline UI
+            self.position_changed.emit(seconds)
     
     def keyPressEvent(self, event):
         """Handle keyboard shortcuts"""
@@ -254,6 +261,9 @@ class VideoPlayer(QWidget):
                 self.seek_slider.blockSignals(True)
                 self.seek_slider.setValue(position)
                 self.seek_slider.blockSignals(False)
+            
+            # Emit position signal for timeline UI
+            self.position_changed.emit(current_time)
         
         if self.was_playing:
             self.vlc.start_playback()
@@ -275,6 +285,9 @@ class VideoPlayer(QWidget):
                 self.seek_slider.blockSignals(True)
                 self.seek_slider.setValue(position)
                 self.seek_slider.blockSignals(False)
+            
+            # Emit position signal for timeline UI
+            self.position_changed.emit(current_time)
         
         if self.was_playing:
             self.vlc.start_playback()
