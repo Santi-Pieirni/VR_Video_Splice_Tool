@@ -1,5 +1,7 @@
 import subprocess
 import os
+import glob
+from pathlib import Path
 from PyQt5.QtCore import QObject, pyqtSignal
 
 class FFmpegHandler(QObject):
@@ -186,7 +188,6 @@ class FFmpegHandler(QObject):
     def cleanup_temp_files(self, pattern="segment_*.mp4"):
         """Clean up temporary segment files"""
         try:
-            import glob
             temp_files = glob.glob(pattern)
             for temp_file in temp_files:
                 os.remove(temp_file)
@@ -200,7 +201,6 @@ class FFmpegHandler(QObject):
             self.progress_updated.emit(f"Starting video processing for {input_video}")
             
             # Create output filename matching batch script
-            from pathlib import Path
             input_name = Path(input_video).stem
             output_file = f"Spliced_{input_name}.mp4"
             

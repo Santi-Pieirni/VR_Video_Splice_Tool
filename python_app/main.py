@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPu
 from PyQt5.QtCore import Qt
 from video_player import VideoPlayer
 from ffmpeg_handler import FFmpegHandler
+from timeline import TimelinePanel
 
 class VRSplicerApp(QMainWindow):
     def __init__(self):
@@ -64,12 +65,14 @@ class VRSplicerApp(QMainWindow):
         # Connect video player signals for timestamp tracking
         self.video_player.in_point_set.connect(self.on_in_point_set)
         self.video_player.out_point_set.connect(self.on_out_point_set)
+        self.video_player.position_changed.connect(self.on_position_changed)
         
-        # Placeholder for timeline
-        self.timeline_label = QLabel("Timeline will be added here")
-        self.timeline_label.setAlignment(Qt.AlignCenter)
-        self.timeline_label.setStyleSheet("background-color: #444; color: white; padding: 30px;")
-        layout.addWidget(self.timeline_label)
+        # Timeline panel
+        self.timeline_panel = TimelinePanel()
+        self.timeline_panel.segment_selected.connect(self.on_segment_selected)
+        self.timeline_panel.segment_deleted.connect(self.on_segment_deleted)
+        self.timeline_panel.seek_to_position.connect(self.on_timeline_seek)
+        layout.addWidget(self.timeline_panel)
         
     def select_video_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
@@ -87,6 +90,13 @@ class VRSplicerApp(QMainWindow):
             if self.video_player.load_video(file_path):
                 print(f"Video loaded successfully: {file_path}")
                 self.process_button.setEnabled(True)
+                
+                # Set timeline duration
+                duration = self.video_player.vlc.get_duration()
+                self.timeline_panel.set_duration(duration)
+                
+                # Clear previous timeline data
+                self.timeline_panel.clear_all()
             else:
                 print(f"Failed to load video: {file_path}")
     
@@ -94,11 +104,66 @@ class VRSplicerApp(QMainWindow):
         """Handle in point set by video player"""
         print(f"In point recorded: {timestamp}")
         self.progress_label.setText(f"In point: {timestamp}")
+        
+        # Update timeline
+        current_time = self.video_player.vlc.get_current_time()
+        duration = self.video_player.vlc.get_duration()
+        if duration > 0:
+            position = current_time / duration
+            self.timeline_panel.timeline.add_marker(position, 'in')
     
     def on_out_point_set(self, timestamp):
         """Handle out point set by video player"""
         print(f"Out point recorded: {timestamp}")
         self.progress_label.setText(f"Out point: {timestamp}")
+        
+        # Update timeline
+        current_time = self.video_player.vlc.get_current_time()
+        duration = self.video_player.vlc.get_duration()
+        if duration > 0:
+            position = current_time / duration
+            self.timeline_panel.timeline.add_marker(position, 'out')
+            
+            # Update segment list when we have a complete pair
+            self.update_segment_list()
+    
+    def on_position_changed(self, position):
+        """Handle position change from video player"""
+        duration = self.video_player.vlc.get_duration()
+        if duration > 0:
+            relative_position = position / duration
+            self.timeline_panel.update_current_position(relative_position)
+    
+    def on_segment_selected(self, index):
+        """Handle segment selection from timeline"""
+        print(f"Segment {index} selected")
+        # Future: seek to segment start
+    
+    def on_segment_deleted(self, index):
+        """Handle segment deletion from timeline"""
+        print(f"Segment {index} deleted")
+        # Update timestamp manager to reflect deletion
+        # This would require extending TimestampManager to support deletion
+    
+    def on_timeline_seek(self, position):
+        """Handle seek from timeline"""
+        if self.current_video:
+            duration = self.video_player.vlc.get_duration()
+            if duration > 0:
+                seek_time = position * duration
+                self.video_player.seek_to_time(seek_time)
+    
+    def update_segment_list(self):
+        """Update the segment list with current in/out points"""
+        timestamps = self.video_player.get_timestamps()
+        in_points = timestamps['in_points']
+        out_points = timestamps['out_points']
+        
+        segments = []
+        for i in range(min(len(in_points), len(out_points))):
+            segments.append((in_points[i], out_points[i]))
+        
+        self.timeline_panel.update_segment_list(segments)
     
     def on_progress_updated(self, message):
         """Handle FFmpeg progress updates"""
