@@ -61,6 +61,21 @@ class TimelineWidget(QWidget):
         secs = int(seconds % 60)
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
     
+    def get_major_interval(self, duration):
+        """Calculate optimal major tick interval based on video duration"""
+        if duration < 60:  # < 1 minute
+            return 10  # 10 seconds
+        elif duration < 300:  # 1-5 minutes
+            return 30  # 30 seconds
+        elif duration < 900:  # 5-15 minutes
+            return 60  # 1 minute
+        elif duration < 1800:  # 15-30 minutes
+            return 120  # 2 minutes
+        elif duration < 3600:  # 30-60 minutes
+            return 300  # 5 minutes
+        else:  # > 1 hour
+            return 600  # 10 minutes
+    
     def paintEvent(self, event):
         """Draw the timeline with markers"""
         painter = QPainter(self)
@@ -79,18 +94,32 @@ class TimelineWidget(QWidget):
         painter.setPen(QPen(QColor(100, 100, 100), 1))
         painter.drawRoundedRect(track_rect, 5, 5)
         
-        # Draw time markers (every 10%)
-        painter.setPen(QPen(QColor(150, 150, 150), 1))
-        for i in range(0, 11):
-            x = 10 + (self.width() - 20) * (i / 10)
-            painter.drawLine(int(x), int(track_y), int(x), int(track_y + track_height))
+        # Draw time markers with major/minor ticks
+        if self.duration > 0:
+            major_interval = self.get_major_interval(self.duration)
+            minor_interval = major_interval / 5  # 5 minor ticks between major ticks
             
-            # Draw time labels
-            if self.duration > 0:
-                time_seconds = self.duration * i / 10
-                time_label = self.format_time(time_seconds)
+            # Draw minor ticks
+            painter.setPen(QPen(QColor(100, 100, 100), 1))
+            current_time = 0
+            while current_time <= self.duration:
+                x = 10 + (self.width() - 20) * (current_time / self.duration)
+                painter.drawLine(int(x), int(track_y + 10), int(x), int(track_y + track_height - 10))
+                current_time += minor_interval
+            
+            # Draw major ticks with labels
+            painter.setPen(QPen(QColor(150, 150, 150), 1))
+            current_time = 0
+            while current_time <= self.duration:
+                x = 10 + (self.width() - 20) * (current_time / self.duration)
+                painter.drawLine(int(x), int(track_y), int(x), int(track_y + track_height))
+                
+                # Draw time label
+                time_label = self.format_time(current_time)
                 painter.setFont(QFont("Arial", 8))
                 painter.drawText(int(x) - 10, int(track_y - 5), time_label)
+                
+                current_time += major_interval
         
         # Draw segment markers
         for i, (position, marker_type) in enumerate(self.markers):
