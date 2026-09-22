@@ -54,6 +54,13 @@ class TimelineWidget(QWidget):
         self.current_position = position
         self.update()
     
+    def format_time(self, seconds):
+        """Format time in HH:MM:SS"""
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    
     def paintEvent(self, event):
         """Draw the timeline with markers"""
         painter = QPainter(self)
@@ -80,7 +87,8 @@ class TimelineWidget(QWidget):
             
             # Draw time labels
             if self.duration > 0:
-                time_label = f"{int(self.duration * i / 10)}s"
+                time_seconds = self.duration * i / 10
+                time_label = self.format_time(time_seconds)
                 painter.setFont(QFont("Arial", 8))
                 painter.drawText(int(x) - 10, int(track_y - 5), time_label)
         
