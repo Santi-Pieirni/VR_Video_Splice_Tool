@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QSlider
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QCoreApplication
 from vlc_wrapper import VLCWrapper
 from timestamp_manager import TimestampManager
@@ -14,9 +14,6 @@ class VideoPlayer(QWidget):
         # Initialize components
         self.vlc = VLCWrapper()
         self.timestamp_manager = TimestampManager()
-        
-        # State variables
-        self.was_playing = False
         
         # Timer for position updates
         self.position_timer = QTimer()
@@ -73,14 +70,6 @@ class VideoPlayer(QWidget):
         
         layout.addLayout(controls_layout)
         
-        # Seek slider
-        self.seek_slider = QSlider(Qt.Horizontal)
-        self.seek_slider.setRange(0, 1000)
-        self.seek_slider.sliderPressed.connect(self.on_seek_start)
-        self.seek_slider.sliderReleased.connect(self.on_seek_end)
-        self.seek_slider.valueChanged.connect(self.on_seek)
-        layout.addWidget(self.seek_slider)
-        
         # Status info
         self.status_label = QLabel("Ready")
         self.status_label.setStyleSheet("color: gray; font-size: 10px;")
@@ -130,7 +119,6 @@ class VideoPlayer(QWidget):
         self.pause_playback()
         self.vlc.stop_playback()
         self.update_time_display()
-        self.seek_slider.setValue(0)
     
     def update_playback_button(self):
         """Update play/pause button text based on state"""
@@ -140,22 +128,14 @@ class VideoPlayer(QWidget):
             self.play_button.setText("Play")
     
     def update_position(self):
-        """Update position display and slider"""
+        """Update position display"""
         try:
             current_time = self.vlc.get_current_time()
             
             # Update time display
             self.update_time_display()
             
-            # Update slider
-            duration = self.vlc.get_duration()
-            if duration > 0:
-                position = int((current_time / duration) * 1000)
-                self.seek_slider.blockSignals(True)
-                self.seek_slider.setValue(position)
-                self.seek_slider.blockSignals(False)
-            
-            # Emit position signal
+            # Emit position signal for timeline UI
             self.position_changed.emit(current_time)
             
         except Exception as e:
@@ -180,51 +160,10 @@ class VideoPlayer(QWidget):
         secs = int(seconds % 60)
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
     
-    def on_seek_start(self):
-        """Called when user starts dragging the slider"""
-        self.was_playing = self.vlc.is_playing
-        self.pause_playback()
-    
-    def on_seek_end(self):
-        """Called when user releases the slider"""
-        self.seek_to_slider()
-        if self.was_playing:
-            self.start_playback()
-    
-    def on_seek(self, value):
-        """Called when slider value changes"""
-        if not self.seek_slider.isSliderDown():
-            self.seek_to_slider()
-    
-    def seek_to_slider(self):
-        """Seek to the position indicated by the slider"""
-        try:
-            position = self.seek_slider.value()
-            # Convert slider (0-1000) to VLC position (0.0-1.0)
-            vlc_position = position / 1000.0
-            
-            self.vlc.seek_to_position(vlc_position)
-            self.update_time_display()
-            
-            # Emit position signal for timeline UI
-            current_time = self.vlc.get_current_time()
-            self.position_changed.emit(current_time)
-            
-        except Exception as e:
-            print(f"Seek error: {e}")
-    
     def seek_to_time(self, seconds):
         """Seek to a specific time in seconds"""
         if self.vlc.seek_to_time(seconds):
             self.update_time_display()
-            
-            # Update slider
-            duration = self.vlc.get_duration()
-            if duration > 0:
-                position = int((seconds / duration) * 1000)
-                self.seek_slider.blockSignals(True)
-                self.seek_slider.setValue(position)
-                self.seek_slider.blockSignals(False)
             
             # Emit position signal for timeline UI
             self.position_changed.emit(seconds)
@@ -246,51 +185,23 @@ class VideoPlayer(QWidget):
     
     def jump_back(self):
         """Jump back 15 seconds"""
-        self.was_playing = self.vlc.is_playing
-        self.pause_playback()
-        
         if self.vlc.jump_by_seconds(-15):
             QCoreApplication.processEvents()
             self.update_time_display()
             
-            # Update slider
-            current_time = self.vlc.get_current_time()
-            duration = self.vlc.get_duration()
-            if duration > 0:
-                position = int((current_time / duration) * 1000)
-                self.seek_slider.blockSignals(True)
-                self.seek_slider.setValue(position)
-                self.seek_slider.blockSignals(False)
-            
             # Emit position signal for timeline UI
+            current_time = self.vlc.get_current_time()
             self.position_changed.emit(current_time)
-        
-        if self.was_playing:
-            self.vlc.start_playback()
     
     def jump_forward(self):
         """Jump forward 15 seconds"""
-        self.was_playing = self.vlc.is_playing
-        self.pause_playback()
-        
         if self.vlc.jump_by_seconds(15):
             QCoreApplication.processEvents()
             self.update_time_display()
             
-            # Update slider
-            current_time = self.vlc.get_current_time()
-            duration = self.vlc.get_duration()
-            if duration > 0:
-                position = int((current_time / duration) * 1000)
-                self.seek_slider.blockSignals(True)
-                self.seek_slider.setValue(position)
-                self.seek_slider.blockSignals(False)
-            
             # Emit position signal for timeline UI
+            current_time = self.vlc.get_current_time()
             self.position_changed.emit(current_time)
-        
-        if self.was_playing:
-            self.vlc.start_playback()
     
     def set_in_point(self):
         """Set in point at current position"""
@@ -314,7 +225,6 @@ class VideoPlayer(QWidget):
         self.pause_playback()
         self.vlc.reset_player_state()
         self.update_time_display()
-        self.seek_slider.setValue(0)
     
     def get_timestamps(self):
         """Get all recorded in/out timestamps"""
