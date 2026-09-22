@@ -70,16 +70,6 @@ class VideoPlayer(QWidget):
         
         layout.addLayout(controls_layout)
         
-        # Status info
-        self.status_label = QLabel("Ready")
-        self.status_label.setStyleSheet("color: gray; font-size: 10px;")
-        layout.addWidget(self.status_label)
-        
-        # Keyboard shortcuts info
-        shortcuts_label = QLabel("Shortcuts: Space=Play/Pause, I=Set In Point, O=Set Out Point")
-        shortcuts_label.setStyleSheet("color: gray; font-size: 10px;")
-        layout.addWidget(shortcuts_label)
-        
         # Initialize VLC
         self.vlc.init_vlc(self.video_widget)
     
@@ -89,9 +79,8 @@ class VideoPlayer(QWidget):
         
         if success:
             self.video_widget.setStyleSheet("background-color: #000; min-height: 400px;")
-            self.status_label.setText(f"Duration: {self.vlc.get_duration():.1f}s")
         else:
-            self.status_label.setText("Failed to load video")
+            print("Failed to load video")
         
         return success
     
@@ -209,7 +198,6 @@ class VideoPlayer(QWidget):
         timestamp = self.format_time(current_time)
         
         self.timestamp_manager.set_in_point(timestamp)
-        self.status_label.setText(f"In point: {timestamp}")
     
     def set_out_point(self):
         """Set out point at current position"""
@@ -217,7 +205,6 @@ class VideoPlayer(QWidget):
         timestamp = self.format_time(current_time)
         
         self.timestamp_manager.set_out_point(timestamp)
-        self.status_label.setText(f"Out point: {timestamp}")
     
     def reset_player_state(self):
         """Reset player state after end"""

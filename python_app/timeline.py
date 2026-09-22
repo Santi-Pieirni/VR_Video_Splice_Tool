@@ -258,14 +258,20 @@ class TimelinePanel(QWidget):
         self.setLayout(layout)
         
         # Timeline
-        timeline_label = QLabel("Timeline")
-        timeline_label.setStyleSheet("font-weight: bold; font-size: 12px;")
-        layout.addWidget(timeline_label)
-        
         self.timeline = TimelineWidget()
         self.timeline.marker_clicked.connect(self.on_marker_clicked)
         self.timeline.position_clicked.connect(self.on_position_clicked)
         layout.addWidget(self.timeline)
+        
+        # Point status display
+        self.point_status_label = QLabel("Ready")
+        self.point_status_label.setStyleSheet("color: gray; font-size: 10px;")
+        layout.addWidget(self.point_status_label)
+        
+        # Keyboard shortcuts info
+        shortcuts_label = QLabel("Shortcuts: Space=Play/Pause, I=Set In Point, O=Set Out Point")
+        shortcuts_label.setStyleSheet("color: gray; font-size: 10px;")
+        layout.addWidget(shortcuts_label)
         
         # Segment list
         self.segment_list = SegmentListWidget()
@@ -293,6 +299,7 @@ class TimelinePanel(QWidget):
         """Clear timeline markers and segment list"""
         self.timeline.clear_markers()
         self.segment_list._clear_segments_internal()
+        self.point_status_label.setText("Ready")
     
     def update_current_position(self, position):
         """Update current position indicator on timeline"""
@@ -310,6 +317,7 @@ class TimelinePanel(QWidget):
     def on_all_segments_cleared(self):
         """Handle when all segments are cleared"""
         self.timeline.clear_markers()
+        self.point_status_label.setText("Ready")
         self.all_segments_cleared.emit()
     
     def get_segments(self):

@@ -42,6 +42,14 @@ class VRSplicerApp(QMainWindow):
         self.video_player = VideoPlayer()
         layout.addWidget(self.video_player)
         
+        # Timeline panel (under video player controls)
+        self.timeline_panel = TimelinePanel()
+        self.timeline_panel.segment_selected.connect(self.on_segment_selected)
+        self.timeline_panel.segment_deleted.connect(self.on_segment_deleted)
+        self.timeline_panel.seek_to_position.connect(self.on_timeline_seek)
+        self.timeline_panel.all_segments_cleared.connect(self.on_all_segments_cleared)
+        layout.addWidget(self.timeline_panel)
+        
         # FFmpeg controls
         ffmpeg_layout = QVBoxLayout()
         
@@ -66,14 +74,6 @@ class VRSplicerApp(QMainWindow):
         self.video_player.in_point_set.connect(self.on_in_point_set)
         self.video_player.out_point_set.connect(self.on_out_point_set)
         self.video_player.position_changed.connect(self.on_position_changed)
-        
-        # Timeline panel
-        self.timeline_panel = TimelinePanel()
-        self.timeline_panel.segment_selected.connect(self.on_segment_selected)
-        self.timeline_panel.segment_deleted.connect(self.on_segment_deleted)
-        self.timeline_panel.seek_to_position.connect(self.on_timeline_seek)
-        self.timeline_panel.all_segments_cleared.connect(self.on_all_segments_cleared)
-        layout.addWidget(self.timeline_panel)
         
     def select_video_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
@@ -101,13 +101,16 @@ class VRSplicerApp(QMainWindow):
                 
                 # Clear timestamps
                 self.video_player.clear_timestamps()
+                
+                # Reset status label
+                self.timeline_panel.point_status_label.setText("Ready")
             else:
                 print(f"Failed to load video: {file_path}")
     
     def on_in_point_set(self, timestamp):
         """Handle in point set by video player"""
         print(f"In point recorded: {timestamp}")
-        self.progress_label.setText(f"In point: {timestamp}")
+        self.timeline_panel.point_status_label.setText(f"In point: {timestamp}")
         
         # Don't add individual markers - only show complete segments
         # Timeline will be updated when complete segments are formed
@@ -115,7 +118,7 @@ class VRSplicerApp(QMainWindow):
     def on_out_point_set(self, timestamp):
         """Handle out point set by video player"""
         print(f"Out point recorded: {timestamp}")
-        self.progress_label.setText(f"Out point: {timestamp}")
+        self.timeline_panel.point_status_label.setText(f"Out point: {timestamp}")
         
         # Update segment list and timeline when we have a complete pair
         self.update_segment_list()
@@ -149,6 +152,9 @@ class VRSplicerApp(QMainWindow):
         # Rebuild timeline markers from remaining segments
         self.sync_timeline_with_current_segments()
         
+        # Update status label
+        self.timeline_panel.point_status_label.setText("Ready")
+        
         # Return focus to video player for I/O key events
         self.video_player.grab_focus()
     
@@ -160,7 +166,7 @@ class VRSplicerApp(QMainWindow):
         self.video_player.clear_timestamps()
         
         # Timeline markers are already cleared by the panel
-        self.progress_label.setText("All segments cleared")
+        self.timeline_panel.point_status_label.setText("Ready")
         
         # Return focus to video player for I/O key events
         self.video_player.grab_focus()
@@ -226,15 +232,18 @@ class VRSplicerApp(QMainWindow):
         """Handle FFmpeg progress updates"""
         print(f"Progress: {message}")
         self.progress_label.setText(message)
+        self.timeline_panel.point_status_label.setText(message)
     
     def on_operation_complete(self, success, message):
         """Handle FFmpeg operation completion"""
         if success:
             QMessageBox.information(self, "Success", message)
             self.progress_label.setText("Processing complete")
+            self.timeline_panel.point_status_label.setText("Processing complete")
         else:
             QMessageBox.critical(self, "Error", message)
             self.progress_label.setText(f"Error: {message}")
+            self.timeline_panel.point_status_label.setText(f"Error: {message}")
     
     def process_video(self):
         """Process video with recorded segments"""
