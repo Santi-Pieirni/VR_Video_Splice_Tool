@@ -16,6 +16,8 @@ class TimelineWidget(QWidget):
 
     marker_clicked = pyqtSignal(int, str)  # marker_index, marker_type (in/out)
     position_clicked = pyqtSignal(float)  # position 0.0-1.0 when timeline is clicked
+    drag_started = pyqtSignal()  # Emitted when drag starts
+    drag_ended = pyqtSignal()  # Emitted when drag ends
 
     def __init__(self):
         super().__init__()
@@ -23,8 +25,16 @@ class TimelineWidget(QWidget):
         self.markers = []  # List of (position, type) tuples, type is 'in' or 'out'
         self.pending_marker = None  # (position, type) for pending marker, type is 'pending_in'
         self.current_position = 0
+        self.is_dragging = False
+        self.drag_start_position = 0
+        self.drag_start_x = 0
         self.setMinimumHeight(80)
         self.setStyleSheet("background-color: #2a2a2a; border: 1px solid #444;")
+
+        # Create drag position label (hidden by default)
+        self.drag_label = QLabel(self)
+        self.drag_label.setStyleSheet("background-color: #333; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px;")
+        self.drag_label.hide()
 
     def set_duration(self, duration):
         """Set total video duration in seconds"""
@@ -209,7 +219,6 @@ class TimelineWidget(QWidget):
             marker_x = 10 + track_width * marker_pos
             if abs(x - marker_x) < 10:
                 self.marker_clicked.emit(i, marker_type)
-                return
 
         # Check if clicked on pending marker
         if self.pending_marker:
@@ -217,11 +226,67 @@ class TimelineWidget(QWidget):
             pending_x = 10 + track_width * pending_pos
             if abs(x - pending_x) < 10:
                 self.marker_clicked.emit(-1, pending_type)  # -1 indicates pending marker
-                return
 
-        # If no marker clicked, emit position for seeking
+        # Start dragging
+        self.is_dragging = True
+        self.drag_start_position = position
+        self.drag_start_x = x
+        self.drag_started.emit()
+
+        # Always emit position for seeking
         position = max(0, min(1, position))
         self.position_clicked.emit(position)
+
+        # Show drag label with current time
+        if self.duration > 0:
+            current_time = position * self.duration
+            time_str = self.format_time(current_time)
+            self.drag_label.setText(time_str)
+            self.drag_label.adjustSize()
+            # Position label above the timeline track
+            track_height = 30
+            track_y = (self.height() - track_height) // 2
+            label_x = x - self.drag_label.width() // 2
+            label_y = track_y - 25
+            self.drag_label.move(label_x, label_y)
+            self.drag_label.show()
+
+    def mouseMoveEvent(self, event):
+        """Handle mouse dragging on timeline"""
+        if self.is_dragging:
+            x = event.x()
+            track_width = self.width() - 20
+
+            # Calculate the delta from the start position
+            delta_x = x - self.drag_start_x
+            delta_position = delta_x / track_width
+
+            new_position = self.drag_start_position + delta_position
+
+            # Clamp to valid range
+            new_position = max(0, min(1, new_position))
+
+            # Emit position for seeking
+            self.position_clicked.emit(new_position)
+
+            # Update drag label position and text
+            if self.duration > 0:
+                current_time = new_position * self.duration
+                time_str = self.format_time(current_time)
+                self.drag_label.setText(time_str)
+                self.drag_label.adjustSize()
+                # Position label above the timeline track
+                track_height = 30
+                track_y = (self.height() - track_height) // 2
+                label_x = x - self.drag_label.width() // 2
+                label_y = track_y - 25
+                self.drag_label.move(label_x, label_y)
+
+    def mouseReleaseEvent(self, event):
+        """Handle mouse release on timeline"""
+        self.is_dragging = False
+        self.drag_label.hide()
+        self.drag_ended.emit()
 
 
 class SegmentListWidget(QWidget):
@@ -338,6 +403,8 @@ class TimelinePanel(QWidget):
     segment_selected = pyqtSignal(int)  # Segment index
     seek_to_position = pyqtSignal(float)  # Position 0.0-1.0
     all_segments_cleared = pyqtSignal()  # All segments cleared
+    drag_started = pyqtSignal()  # Timeline drag started
+    drag_ended = pyqtSignal()  # Timeline drag ended
 
     def __init__(self):
         super().__init__()
@@ -351,6 +418,8 @@ class TimelinePanel(QWidget):
         self.timeline = TimelineWidget()
         self.timeline.marker_clicked.connect(self.on_marker_clicked)
         self.timeline.position_clicked.connect(self.on_position_clicked)
+        self.timeline.drag_started.connect(self.drag_started)
+        self.timeline.drag_ended.connect(self.drag_ended)
         layout.addWidget(self.timeline)
 
         # Point status display

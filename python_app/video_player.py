@@ -49,25 +49,35 @@ class VideoPlayer(QWidget):
         # Controls
         controls_layout = QHBoxLayout()
 
-        # Play/Pause button
+        # Jump back 15 seconds (left)
+        self.jump_back_15_button = QPushButton("-15s")
+        self.jump_back_15_button.clicked.connect(self.jump_back_15)
+        controls_layout.addWidget(self.jump_back_15_button)
+
+        # Jump back 5 seconds
+        self.jump_back_5_button = QPushButton("-5s")
+        self.jump_back_5_button.clicked.connect(self.jump_back_5)
+        controls_layout.addWidget(self.jump_back_5_button)
+
+        # Play/Pause button (center)
         self.play_button = QPushButton("Play")
         self.play_button.clicked.connect(self.toggle_playback)
         controls_layout.addWidget(self.play_button)
 
-        # Stop button
+        # Stop button (center)
         self.stop_button = QPushButton("Stop")
         self.stop_button.clicked.connect(self.stop_playback)
         controls_layout.addWidget(self.stop_button)
 
-        # Jump back 15 seconds
-        self.jump_back_button = QPushButton("-15s")
-        self.jump_back_button.clicked.connect(self.jump_back)
-        controls_layout.addWidget(self.jump_back_button)
+        # Jump forward 5 seconds
+        self.jump_forward_5_button = QPushButton("+5s")
+        self.jump_forward_5_button.clicked.connect(self.jump_forward_5)
+        controls_layout.addWidget(self.jump_forward_5_button)
 
-        # Jump forward 15 seconds
-        self.jump_forward_button = QPushButton("+15s")
-        self.jump_forward_button.clicked.connect(self.jump_forward)
-        controls_layout.addWidget(self.jump_forward_button)
+        # Jump forward 15 seconds (right)
+        self.jump_forward_15_button = QPushButton("+15s")
+        self.jump_forward_15_button.clicked.connect(self.jump_forward_15)
+        controls_layout.addWidget(self.jump_forward_15_button)
 
         # Time display
         self.time_label = QLabel("00:00:00 / 00:00:00")
@@ -180,7 +190,7 @@ class VideoPlayer(QWidget):
         else:
             super().keyPressEvent(event)
 
-    def jump_back(self):
+    def jump_back_15(self):
         """Jump back 15 seconds"""
         if self.vlc.jump_by_seconds(-15):
             QCoreApplication.processEvents()
@@ -190,7 +200,7 @@ class VideoPlayer(QWidget):
             current_time = self.vlc.get_current_time()
             self.position_changed.emit(current_time)
 
-    def jump_forward(self):
+    def jump_forward_15(self):
         """Jump forward 15 seconds"""
         if self.vlc.jump_by_seconds(15):
             QCoreApplication.processEvents()
@@ -199,6 +209,34 @@ class VideoPlayer(QWidget):
             # Emit position signal for timeline UI
             current_time = self.vlc.get_current_time()
             self.position_changed.emit(current_time)
+
+    def jump_back_5(self):
+        """Jump back 5 seconds"""
+        if self.vlc.jump_by_seconds(-5):
+            QCoreApplication.processEvents()
+            self.update_time_display()
+
+            # Emit position signal for timeline UI
+            current_time = self.vlc.get_current_time()
+            self.position_changed.emit(current_time)
+
+    def jump_forward_5(self):
+        """Jump forward 5 seconds"""
+        if self.vlc.jump_by_seconds(5):
+            QCoreApplication.processEvents()
+            self.update_time_display()
+
+            # Emit position signal for timeline UI
+            current_time = self.vlc.get_current_time()
+            self.position_changed.emit(current_time)
+
+    def jump_back(self):
+        """Jump back 15 seconds (for keyboard shortcut)"""
+        self.jump_back_15()
+
+    def jump_forward(self):
+        """Jump forward 15 seconds (for keyboard shortcut)"""
+        self.jump_forward_15()
 
     def set_in_point(self):
         """Set in point at current position"""
