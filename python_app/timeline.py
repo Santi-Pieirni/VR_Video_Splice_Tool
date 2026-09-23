@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QPointF, QRectF, Qt, pyqtSignal
-from PyQt5.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygonF
+from PyQt5.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPen, QPolygonF
 from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -29,7 +29,16 @@ class TimelineWidget(QWidget):
         self.drag_start_position = 0
         self.drag_start_x = 0
         self.setMinimumHeight(80)
-        self.setStyleSheet("background-color: #2a2a2a; border: 1px solid #444;")
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setStyleSheet(
+            """
+            TimelineWidget {
+                background-color: #2a2a2a;
+                border: 1px solid #444;
+                border-radius: 6px;
+            }
+            """
+        )
 
         # Create drag position label (hidden by default)
         self.drag_label = QLabel(self)
@@ -111,8 +120,14 @@ class TimelineWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        # Draw background
-        painter.fillRect(self.rect(), QColor(42, 42, 42))
+        outer_rect = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        outer_path = QPainterPath()
+        outer_path.addRoundedRect(outer_rect, 6, 6)
+
+        # Keep all custom drawing inside the rounded outer corners.
+        painter.setClipPath(outer_path)
+
+        painter.fillPath(outer_path, QColor(42, 42, 42))
 
         # Draw timeline track
         track_height = 30
@@ -207,6 +222,12 @@ class TimelineWidget(QWidget):
             painter.drawLine(
                 int(x), int(track_y - 5), int(x), int(track_y + track_height + 5)
             )
+
+        # Draw the rounded outer border on top of the timeline contents.
+        painter.setClipping(False)
+        painter.setBrush(Qt.NoBrush)
+        painter.setPen(QPen(QColor(68, 68, 68), 1))
+        painter.drawRoundedRect(outer_rect, 6, 6)
 
     def mousePressEvent(self, event):
         """Handle mouse clicks on timeline"""
