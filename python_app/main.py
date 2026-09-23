@@ -305,7 +305,9 @@ class VRSplicerApp(QMainWindow):
         self.ffmpeg_worker.operation_complete.connect(self.on_operation_complete)
         self.ffmpeg_worker.finished.connect(self.ffmpeg_thread.quit)
         self.ffmpeg_worker.finished.connect(self.ffmpeg_worker.deleteLater)
+        self.ffmpeg_thread.finished.connect(self.ffmpeg_worker.deleteLater)
         self.ffmpeg_thread.finished.connect(self.ffmpeg_thread.deleteLater)
+        self.ffmpeg_thread.finished.connect(self.finalize_close)
 
         self.ffmpeg_thread.start()
 
@@ -348,7 +350,7 @@ if __name__ == "__main__":
     window = VRSplicerApp()
 
     if not window.ffmpeg_installation_is_available():
-        required_location = r"C:\ffmpeg\bin\"
+        required_location = "C:\\ffmpeg\\bin\\"
         QMessageBox.critical(
             window,
             "FFmpeg Required",
