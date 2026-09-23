@@ -1,7 +1,7 @@
 import os
 import sys
 
-from PyQt5.QtCore import QObject, Qt, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QFileInfo, QObject, Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -83,14 +84,88 @@ class VRSplicerApp(QMainWindow):
         title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(title_label)
 
-        # File selection
-        self.file_label = QLabel("No video file selected")
-        self.file_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.file_label)
+        # File selection panel
+        file_selection_panel = QWidget()
+        file_selection_panel.setObjectName("fileSelectionPanel")
+        file_selection_panel.setSizePolicy(
+            QSizePolicy.Maximum,
+            QSizePolicy.Preferred,
+        )
 
-        select_button = QPushButton("Select Video File")
+        file_selection_layout = QVBoxLayout()
+        file_selection_layout.setContentsMargins(0, 8, 0, 8)
+        file_selection_layout.setSpacing(5)
+        file_selection_panel.setLayout(file_selection_layout)
+
+        source_label = QLabel("Source Video")
+        source_label.setObjectName("sourceVideoLabel")
+        file_selection_layout.addWidget(source_label)
+
+        # Filename display
+        self.file_label = QLabel("No video selected")
+        self.file_label.setObjectName("selectedFileLabel")
+        self.file_label.setToolTip("No video selected")
+        self.file_label.setSizePolicy(
+            QSizePolicy.Maximum,
+            QSizePolicy.Fixed,
+        )
+        self.file_label.adjustSize()
+        file_selection_layout.addWidget(
+            self.file_label,
+            alignment=Qt.AlignLeft,
+        )
+
+        # Standalone browse button
+        select_button = QPushButton("Browse...")
+        select_button.setObjectName("browseButton")
+        select_button.setFixedWidth(100)
         select_button.clicked.connect(self.select_video_file)
-        layout.addWidget(select_button)
+        file_selection_layout.addWidget(
+            select_button,
+            alignment=Qt.AlignLeft,
+        )
+
+        layout.addWidget(
+            file_selection_panel,
+            alignment=Qt.AlignLeft,
+        )
+
+        file_selection_panel.setStyleSheet(
+            """
+            #sourceVideoLabel {
+                color: #dce8ef;
+                font-size: 11px;
+                font-weight: bold;
+            }
+
+            #selectedFileLabel {
+                background-color: #1f1f1f;
+                color: white;
+                border: 1px solid #d6e0e8;
+                border-radius: 2px;
+                padding: 5px 10px;
+                font-size: 13px;
+            }
+
+            #browseButton {
+                background-color: #1f1f1f;
+                color: white;
+                border: 1px solid #d6e0e8;
+                border-radius: 2px;
+                padding: 5px 10px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+
+            #browseButton:hover {
+                background-color: #3a5870;
+            }
+
+            #browseButton:pressed {
+                background-color: #506d84;
+            }
+            """
+        )
 
         # Video player
         self.video_player = VideoPlayer()
@@ -169,7 +244,10 @@ class VRSplicerApp(QMainWindow):
         )
 
         if file_path:
-            self.file_label.setText(f"Selected: {file_path}")
+            file_name = QFileInfo(file_path).fileName()
+            self.file_label.setText(file_name)
+            self.file_label.setToolTip(file_path)
+            self.file_label.adjustSize()
             self.current_video = file_path
 
             # Load video into player
