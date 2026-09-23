@@ -243,7 +243,19 @@ class VideoPlayer(QWidget):
 
     def cleanup(self):
         """Clean up resources"""
-        self.vlc.cleanup()
+        try:
+            # Stop playback first
+            self.stop_playback()
+        except (AttributeError, RuntimeError) as e:
+            print(f"Error stopping playback during cleanup: {e}")
+        
+        try:
+            # Then clean up VLC
+            self.vlc.cleanup()
+        except (AttributeError, RuntimeError) as e:
+            print(f"Error during VLC cleanup: {e}")
+        
+        # Stop timer
         self.position_timer.stop()
 
     def grab_focus(self):

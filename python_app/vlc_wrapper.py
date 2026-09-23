@@ -112,8 +112,11 @@ class VLCWrapper(QObject):
         """Stop video playback and reset to beginning"""
         self.pause_playback()
         if self.player is not None:
-            self.player.stop()
-            self.player.set_time(0)
+            try:
+                self.player.stop()
+                self.player.set_time(0)
+            except (AttributeError, RuntimeError) as e:
+                print(f"Error stopping playback: {e}")
 
     def get_current_time(self):
         """Get current playback position in seconds"""
@@ -212,4 +215,17 @@ class VLCWrapper(QObject):
     def cleanup(self):
         """Clean up VLC resources"""
         if self.player is not None:
-            self.player.stop()
+            try:
+                # Stop playback if playing
+                if self.is_playing:
+                    self.player.stop()
+                # Release the media
+                if self.media is not None:
+                    self.media.release()
+                # Release the player
+                self.player.release()
+                # Release the instance
+                if self.instance is not None:
+                    self.instance.release()
+            except (AttributeError, RuntimeError) as e:
+                print(f"Error during VLC cleanup: {e}")

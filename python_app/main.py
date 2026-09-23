@@ -330,6 +330,9 @@ class VRSplicerApp(QMainWindow):
 
         segments = list(zip(in_points, out_points))
 
+        # Stop video playback first (same as clicking stop button)
+        self.video_player.stop_playback()
+        
         reply = QMessageBox.question(
             self,
             "Confirm Processing",
@@ -395,6 +398,9 @@ class VRSplicerApp(QMainWindow):
             event.ignore()
             return
 
+        # Stop video playback before cleanup
+        self.video_player.stop_playback()
+        
         self.ffmpeg_handler.cleanup()
         self.video_player.cleanup()
         event.accept()
