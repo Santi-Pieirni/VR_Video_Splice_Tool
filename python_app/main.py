@@ -125,6 +125,8 @@ class VRSplicerApp(QMainWindow):
         # Connect video player signals for timestamp tracking
         self.video_player.in_point_set.connect(self.on_in_point_set)
         self.video_player.out_point_set.connect(self.on_out_point_set)
+        self.video_player.pending_in_point_set.connect(self.on_pending_in_point_set)
+        self.video_player.state_changed.connect(self.on_state_changed)
         self.video_player.position_changed.connect(self.on_position_changed)
 
     def select_video_file(self):
@@ -154,18 +156,21 @@ class VRSplicerApp(QMainWindow):
                 # Clear timestamps
                 self.video_player.clear_timestamps()
 
+                # Clear pending markers
+                self.timeline_panel.clear_pending_marker()
+
                 # Reset status label
                 self.timeline_panel.point_status_label.setText("Ready")
             else:
                 print(f"Failed to load video: {file_path}")
 
     def on_in_point_set(self, timestamp):
-        """Handle in point set by video player"""
+        """Handle in point set by video player (when segment is completed)"""
         print(f"In point recorded: {timestamp}")
         self.timeline_panel.point_status_label.setText(f"In point: {timestamp}")
 
     def on_out_point_set(self, timestamp):
-        """Handle out point set by video player"""
+        """Handle out point set by video player (when segment is completed)"""
         print(f"Out point recorded: {timestamp}")
         self.timeline_panel.point_status_label.setText(f"Out point: {timestamp}")
 
@@ -175,6 +180,25 @@ class VRSplicerApp(QMainWindow):
 
         # Ensure video player maintains focus for I/O key events
         self.video_player.grab_focus()
+
+    def on_pending_in_point_set(self, timestamp):
+        """Handle pending in point set by video player"""
+        print(f"Pending in point set: {timestamp}")
+        self.timeline_panel.point_status_label.setText(f"Pending in: {timestamp}")
+
+        # Show pending marker on timeline
+        duration = self.video_player.vlc.get_duration()
+        if duration > 0:
+            in_time = self.parse_timestamp_to_seconds(timestamp)
+            in_position = in_time / duration
+            self.timeline_panel.set_pending_marker(in_position)
+
+    def on_state_changed(self, state):
+        """Handle state change from timestamp manager"""
+        if state == "waiting_for_in":
+            self.timeline_panel.point_status_label.setText("Waiting for in point")
+        elif state == "waiting_for_out":
+            self.timeline_panel.point_status_label.setText("Waiting for out point")
 
     def on_position_changed(self, position):
         """Handle position change from video player"""
@@ -192,7 +216,9 @@ class VRSplicerApp(QMainWindow):
         """Handle segment deletion from timeline"""
         print(f"Segment {index} deleted")
         self.video_player.timestamp_manager.delete_segment(index)
+        self.video_player.reset_active_pair()
         self.sync_timeline_with_current_segments()
+        self.timeline_panel.clear_pending_marker()
         self.timeline_panel.point_status_label.setText("Ready")
         self.video_player.grab_focus()
 
@@ -200,6 +226,7 @@ class VRSplicerApp(QMainWindow):
         """Handle when all segments are cleared"""
         print("All segments cleared")
         self.video_player.clear_timestamps()
+        self.timeline_panel.clear_pending_marker()
         self.timeline_panel.point_status_label.setText("Ready")
         self.video_player.grab_focus()
 
@@ -304,6 +331,9 @@ class VRSplicerApp(QMainWindow):
 
         segments = list(zip(in_points, out_points))
 
+        # Stop video playback first (same as clicking stop button)
+        self.video_player.stop_playback()
+        
         reply = QMessageBox.question(
             self,
             "Confirm Processing",
@@ -369,6 +399,9 @@ class VRSplicerApp(QMainWindow):
             event.ignore()
             return
 
+        # Stop video playback before cleanup
+        self.video_player.stop_playback()
+        
         self.ffmpeg_handler.cleanup()
         self.video_player.cleanup()
         event.accept()

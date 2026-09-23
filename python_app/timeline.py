@@ -21,6 +21,7 @@ class TimelineWidget(QWidget):
         super().__init__()
         self.duration = 0
         self.markers = []  # List of (position, type) tuples, type is 'in' or 'out'
+        self.pending_marker = None  # (position, type) for pending marker, type is 'pending_in'
         self.current_position = 0
         self.setMinimumHeight(80)
         self.setStyleSheet("background-color: #2a2a2a; border: 1px solid #444;")
@@ -38,6 +39,17 @@ class TimelineWidget(QWidget):
     def clear_markers(self):
         """Clear all markers"""
         self.markers = []
+        self.pending_marker = None
+        self.update()
+
+    def set_pending_marker(self, position):
+        """Set a pending in marker"""
+        self.pending_marker = (position, "pending_in")
+        self.update()
+
+    def clear_pending_marker(self):
+        """Clear pending marker"""
+        self.pending_marker = None
         self.update()
 
     def rebuild_markers_from_segments(self, segments):
@@ -159,6 +171,25 @@ class TimelineWidget(QWidget):
             polygon = QPolygonF([QPointF(px, py) for px, py in points])
             painter.drawPolygon(polygon)
 
+        # Draw pending marker (if any)
+        if self.pending_marker:
+            position, marker_type = self.pending_marker
+            x = 10 + (self.width() - 20) * position
+
+            if marker_type == "pending_in":
+                # Pending in point marker (yellow triangle pointing up, outlined)
+                color = QColor(255, 200, 0)
+                points = [
+                    (x, track_y - 10),
+                    (x - 8, track_y - 20),
+                    (x + 8, track_y - 20),
+                ]
+
+                painter.setBrush(QBrush(QColor(255, 200, 0, 100)))  # Semi-transparent
+                painter.setPen(QPen(color, 2))  # Thicker outline
+                polygon = QPolygonF([QPointF(px, py) for px, py in points])
+                painter.drawPolygon(polygon)
+
         # Draw current position indicator
         if self.current_position > 0:
             x = 10 + (self.width() - 20) * self.current_position
@@ -178,6 +209,14 @@ class TimelineWidget(QWidget):
             marker_x = 10 + track_width * marker_pos
             if abs(x - marker_x) < 10:
                 self.marker_clicked.emit(i, marker_type)
+                return
+
+        # Check if clicked on pending marker
+        if self.pending_marker:
+            pending_pos, pending_type = self.pending_marker
+            pending_x = 10 + track_width * pending_pos
+            if abs(x - pending_x) < 10:
+                self.marker_clicked.emit(-1, pending_type)  # -1 indicates pending marker
                 return
 
         # If no marker clicked, emit position for seeking
@@ -354,6 +393,14 @@ class TimelinePanel(QWidget):
         self.segment_list._clear_segments_internal()
         self.point_status_label.setText("Ready")
 
+    def set_pending_marker(self, position):
+        """Set pending marker on timeline"""
+        self.timeline.set_pending_marker(position)
+
+    def clear_pending_marker(self):
+        """Clear pending marker from timeline"""
+        self.timeline.clear_pending_marker()
+
     def update_current_position(self, position):
         """Update current position indicator on timeline"""
         self.timeline.set_current_position(position)
@@ -369,6 +416,7 @@ class TimelinePanel(QWidget):
     def on_all_segments_cleared(self):
         """Handle when all segments are cleared"""
         self.timeline.clear_markers()
+        self.timeline.clear_pending_marker()
         self.point_status_label.setText("Ready")
         self.all_segments_cleared.emit()
 
@@ -379,3 +427,4 @@ class TimelinePanel(QWidget):
     def sync_timeline_with_segments(self, segment_positions):
         """Sync timeline markers with current segment positions"""
         self.timeline.sync_markers_with_segments(segment_positions)
+        self.timeline.clear_pending_marker()  # Clear pending marker when segment is completed
