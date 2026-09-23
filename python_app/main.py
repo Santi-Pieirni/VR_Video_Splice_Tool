@@ -216,6 +216,7 @@ class VRSplicerApp(QMainWindow):
         """Handle segment deletion from timeline"""
         print(f"Segment {index} deleted")
         self.video_player.timestamp_manager.delete_segment(index)
+        self.video_player.reset_active_pair()
         self.sync_timeline_with_current_segments()
         self.timeline_panel.clear_pending_marker()
         self.timeline_panel.point_status_label.setText("Ready")
