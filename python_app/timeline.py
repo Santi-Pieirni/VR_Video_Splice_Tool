@@ -441,6 +441,8 @@ class TimelinePanel(QWidget):
         self.segment_list.all_segments_cleared.connect(self.on_all_segments_cleared)
         layout.addWidget(self.segment_list)
 
+        layout.setContentsMargins(10, 0, 10, 10)
+
     def set_duration(self, duration):
         """Set video duration"""
         self.timeline.set_duration(duration)

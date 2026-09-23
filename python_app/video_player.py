@@ -36,6 +36,7 @@ class VideoPlayer(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(11, 11, 11, 0)
         self.setLayout(layout)
 
         # Make this widget focusable to receive keyboard events
@@ -98,7 +99,7 @@ class VideoPlayer(QWidget):
         time_container_layout.setSpacing(0)
         self.time_container.setLayout(time_container_layout)
         self.time_container.setStyleSheet(
-            "background-color: #3a3a3a; border: 2px solid #555; border-radius: 6px;"
+            "background-color: #3a3a3a; border: 1px solid #555; border-radius: 6px;"
         )
 
         self.time_label = QLabel("00:00:00 / 00:00:00")
@@ -112,7 +113,6 @@ class VideoPlayer(QWidget):
         time_container_wrapper.addWidget(self.time_container)
         time_container_wrapper.addStretch()
         layout.addLayout(time_container_wrapper)
-        layout.addStretch()
 
         # Button color theming: green tinted play, red tinted stop, with hover/pressed states
         # Use object names so only these buttons are affected.
