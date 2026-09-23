@@ -85,12 +85,34 @@ class VideoPlayer(QWidget):
         self.jump_forward_15_button.clicked.connect(self.jump_forward_15)
         controls_layout.addWidget(self.jump_forward_15_button)
 
-        # Time display
-        self.time_label = QLabel("00:00:00 / 00:00:00")
-        self.time_label.setMinimumWidth(150)
-        controls_layout.addWidget(self.time_label)
-
         layout.addLayout(controls_layout)
+
+        # Time label moved below the buttons so it sits above the timeline (left-aligned)
+        # Container provides contrast, larger text, padding and left alignment.
+        time_container_wrapper = QHBoxLayout()  # Horizontal wrapper
+        
+        self.time_container = QWidget()
+        time_container_layout = QHBoxLayout()
+        # Indent so the left edge of the label lines up with the timeline track (timeline has ~10px inset)
+        time_container_layout.setContentsMargins(10, 6, 10, 6)
+        time_container_layout.setSpacing(0)
+        self.time_container.setLayout(time_container_layout)
+        self.time_container.setStyleSheet(
+            "background-color: #3a3a3a; border: 2px solid #555; border-radius: 6px;"
+        )
+
+        self.time_label = QLabel("00:00:00 / 00:00:00")
+        self.time_label.setObjectName("timeLabel")
+        self.time_label.setStyleSheet(
+            "color: white; font-size: 14px; font-weight: bold; padding-left: 6px; padding-right: 6px;"
+        )
+        #self.time_label.setMinimumWidth(200)
+        time_container_layout.addWidget(self.time_label, alignment=Qt.AlignLeft)
+
+        time_container_wrapper.addWidget(self.time_container)
+        time_container_wrapper.addStretch()
+        layout.addLayout(time_container_wrapper)
+        layout.addStretch()
 
         # Button color theming: green tinted play, red tinted stop, with hover/pressed states
         # Use object names so only these buttons are affected.
