@@ -1,3 +1,4 @@
+import os
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QLabel, QFileDialog, QMessageBox
 from PyQt5.QtCore import Qt, QThread, QObject, pyqtSignal, pyqtSlot
@@ -42,6 +43,16 @@ class VRSplicerApp(QMainWindow):
         self.ffmpeg_worker = None
 
         self.init_ui()
+
+    def ffmpeg_installation_is_available(self):
+        """Return whether both required FFmpeg executables are installed."""
+        return all(
+            os.path.isfile(path)
+            for path in (
+                self.ffmpeg_handler.ffmpeg_path,
+                self.ffmpeg_handler.ffprobe_path,
+            )
+        )
 
     def init_ui(self):
         central_widget = QWidget()
@@ -246,8 +257,7 @@ class VRSplicerApp(QMainWindow):
             self.progress_label.setText(f"Error: {message}")
             self.timeline_panel.point_status_label.setText(f"Error: {message}")
 
-        if self.process_button.isEnabled() is False:
-            self.process_button.setEnabled(True)
+        self.process_button.setEnabled(True)
 
     def process_video(self):
         """Process video with recorded segments in a background thread."""
@@ -299,5 +309,20 @@ class VRSplicerApp(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = VRSplicerApp()
+
+    if not window.ffmpeg_installation_is_available():
+        required_location = r"C:\ffmpeg\bin\"
+        QMessageBox.critical(
+            window,
+            "FFmpeg Required",
+            "FFmpeg is not installed in the required location.\n\n"
+            f"Please install FFmpeg so both ffmpeg.exe and ffprobe.exe are located in:\n"
+            f"{required_location}\n\n"
+            "The application will now close."
+        )
+        window.close()
+        app.quit()
+        sys.exit(1)
+
     window.show()
     sys.exit(app.exec_())
