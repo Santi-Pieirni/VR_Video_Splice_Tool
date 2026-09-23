@@ -52,11 +52,15 @@ class VideoPlayer(QWidget):
 
         # Jump back 15 seconds (left)
         self.jump_back_15_button = QPushButton("-15s")
+        self.jump_back_15_button.setObjectName("jumpButton")
+        self.jump_back_15_button.setMinimumWidth(55)
         self.jump_back_15_button.clicked.connect(self.jump_back_15)
         controls_layout.addWidget(self.jump_back_15_button)
 
         # Jump back 5 seconds
         self.jump_back_5_button = QPushButton("-5s")
+        self.jump_back_5_button.setObjectName("jumpButton")
+        self.jump_back_5_button.setMinimumWidth(55)
         self.jump_back_5_button.clicked.connect(self.jump_back_5)
         controls_layout.addWidget(self.jump_back_5_button)
 
@@ -78,11 +82,15 @@ class VideoPlayer(QWidget):
 
         # Jump forward 5 seconds
         self.jump_forward_5_button = QPushButton("+5s")
+        self.jump_forward_5_button.setObjectName("jumpButton")
+        self.jump_forward_5_button.setMinimumWidth(55)
         self.jump_forward_5_button.clicked.connect(self.jump_forward_5)
         controls_layout.addWidget(self.jump_forward_5_button)
 
         # Jump forward 15 seconds (right)
         self.jump_forward_15_button = QPushButton("+15s")
+        self.jump_forward_15_button.setObjectName("jumpButton")
+        self.jump_forward_15_button.setMinimumWidth(55)
         self.jump_forward_15_button.clicked.connect(self.jump_forward_15)
         controls_layout.addWidget(self.jump_forward_15_button)
 
@@ -144,6 +152,28 @@ class VideoPlayer(QWidget):
             }
             #stopButton:pressed {
                 background-color: #922b21;
+            }
+
+            #jumpButton {
+                background-color: #5dade2;
+                color: white;
+                border: 1px solid #3498db;
+                border-radius: 4px;
+                padding: 6px 10px;
+            }
+            #jumpButton:hover {
+                background-color: #3498db;
+            }
+            #jumpButton:pressed {
+                background-color: #2874a6;
+            }
+
+            #jumpButton,
+            #playButton,
+            #stopButton {
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
             }
             """
         )
