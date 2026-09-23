@@ -39,7 +39,7 @@ class VLCWrapper(QObject):
             print("VLC initialized successfully")
             return True
 
-        except Exception as e:
+        except (AttributeError, OSError) as e:
             print(f"Error initializing VLC: {e}")
             return False
 
@@ -74,7 +74,7 @@ class VLCWrapper(QObject):
 
             return True
 
-        except Exception as e:
+        except (AttributeError, OSError) as e:
             print(f"Error loading video: {e}")
             return False
 
@@ -124,7 +124,7 @@ class VLCWrapper(QObject):
             # Handle VLC returning -1 for current time (error state)
             current_time = max(current_time, 0)
             return current_time
-        except:
+        except (AttributeError, TypeError):
             return 0
 
     def get_time(self):
@@ -133,7 +133,7 @@ class VLCWrapper(QObject):
             return 0
         try:
             return self.player.get_time()
-        except:
+        except (AttributeError, TypeError):
             return 0
 
     def get_length(self):
@@ -142,7 +142,7 @@ class VLCWrapper(QObject):
             return 0
         try:
             return self.player.get_length()
-        except:
+        except (AttributeError, TypeError):
             return 0
 
     def get_duration(self):
@@ -158,7 +158,7 @@ class VLCWrapper(QObject):
             self.player.set_position(position)
             QCoreApplication.processEvents()
             return True
-        except Exception as e:
+        except (AttributeError, OSError) as e:
             print(f"Seek error: {e}")
             return False
 
@@ -171,7 +171,7 @@ class VLCWrapper(QObject):
             # VLC uses milliseconds
             self.player.set_time(int(seconds * 1000))
             return True
-        except Exception as e:
+        except (AttributeError, OSError) as e:
             print(f"Time seek error: {e}")
             return False
 
@@ -191,7 +191,7 @@ class VLCWrapper(QObject):
             self.player.set_time(int(new_time))
             return True
 
-        except Exception as e:
+        except (AttributeError, OSError) as e:
             print(f"Jump error: {e}")
             return False
 

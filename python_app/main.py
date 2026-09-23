@@ -37,7 +37,8 @@ class FFmpegWorker(QObject):
             handler.progress_updated.connect(self.progress_updated)
             handler.operation_complete.connect(self.operation_complete)
             handler.process_video(self.input_video, self.segments, "output")
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError) as exc:
+            # Narrow exceptions to expected types; report back to UI
             self.operation_complete.emit(False, str(exc))
         finally:
             self.finished.emit()
@@ -230,7 +231,7 @@ class VRSplicerApp(QMainWindow):
                 h, m, s = map(int, parts)
                 return h * 3600 + m * 60 + s
             return 0
-        except Exception:
+        except (AttributeError, ValueError):
             return 0
 
     def on_timeline_seek(self, position):

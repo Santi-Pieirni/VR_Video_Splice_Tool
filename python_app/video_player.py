@@ -131,7 +131,7 @@ class VideoPlayer(QWidget):
             # Emit position signal for timeline UI
             self.position_changed.emit(current_time)
 
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             print(f"Error updating position: {e}")
 
     def update_time_display(self):
@@ -143,8 +143,8 @@ class VideoPlayer(QWidget):
             current_str = self.format_time(current_time)
             total_str = self.format_time(duration)
             self.time_label.setText(f"{current_str} / {total_str}")
-        except:
-            pass
+        except (RuntimeError, OSError) as e:
+            print(f"Error updating time display: {e}")
 
     def format_time(self, seconds):
         """Format time in HH:MM:SS"""

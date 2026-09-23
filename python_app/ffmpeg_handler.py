@@ -82,8 +82,9 @@ class FFmpegHandler(QObject):
         except subprocess.CalledProcessError as e:
             print(f"Error detecting codec: {e}")
             return None
-        except Exception as e:
-            print(f"Unexpected error: {e}")
+        except OSError as e:
+            # FileNotFoundError and other OS-level issues end up here
+            print(f"Unexpected OS error when detecting codec: {e}")
             return None
 
     def get_codec_parameters(self, codec):
@@ -125,7 +126,8 @@ class FFmpegHandler(QObject):
                 output_file,
             ]
             self.progress_updated.emit(f"Running FFmpeg: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            # Explicitly set check=False so failures are reported via return code
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             if result.returncode == 0:
                 self.progress_updated.emit(f"Segment created: {output_file}")
                 self.segment_created.emit(output_file)
@@ -133,8 +135,11 @@ class FFmpegHandler(QObject):
             error_msg = result.stderr if result.stderr else "Unknown error"
             self.progress_updated.emit(f"FFmpeg error: {error_msg}")
             return False
-        except Exception as e:
-            self.progress_updated.emit(f"Error creating segment: {e!s}")
+        except OSError as e:
+            self.progress_updated.emit(f"OS error creating segment: {e}")
+            return False
+        except ValueError as e:
+            self.progress_updated.emit(f"Invalid timestamp: {e}")
             return False
 
     def calculate_duration(self, start_time, end_time):
@@ -192,15 +197,15 @@ class FFmpegHandler(QObject):
                 output_file,
             ]
             self.progress_updated.emit(f"Running FFmpeg: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             if result.returncode == 0 and os.path.exists(output_file):
                 self.progress_updated.emit(f"Final output created: {output_file}")
                 return True
             error_msg = result.stderr if result.stderr else "Unknown error"
             self.progress_updated.emit(f"FFmpeg error: {error_msg}")
             return False
-        except Exception as e:
-            self.progress_updated.emit(f"Error splicing segments: {e!s}")
+        except OSError as e:
+            self.progress_updated.emit(f"OS error splicing segments: {e}")
             return False
 
     def cleanup_temp_files(self, pattern="segment_*.mp4"):
@@ -241,7 +246,7 @@ class FFmpegHandler(QObject):
 
             self.operation_complete.emit(True, f"Processing complete: {output_file}")
             return True
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             self.operation_complete.emit(False, f"Processing error: {e!s}")
             return False
         finally:
