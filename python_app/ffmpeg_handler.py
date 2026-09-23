@@ -1,9 +1,9 @@
-import subprocess
 import os
-import glob
 import shutil
+import subprocess
 import tempfile
 from pathlib import Path
+
 from PyQt5.QtCore import QObject, pyqtSignal
 
 
@@ -65,11 +65,15 @@ class FFmpegHandler(QObject):
         try:
             cmd = [
                 self.ffprobe_path,
-                "-v", "error",
-                "-select_streams", "v:0",
-                "-show_entries", "stream=codec_name",
-                "-of", "default=noprint_wrappers=1:nokey=1",
-                video_path
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=codec_name",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                video_path,
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             codec = result.stdout.strip().lower()
@@ -87,13 +91,20 @@ class FFmpegHandler(QObject):
         if codec == "h264":
             return {"vcodec": "libx264", "crf": "18", "preset": "medium", "tag": ""}
         if codec in ["hevc", "h265"]:
-            return {"vcodec": "libx265", "crf": "20", "preset": "medium", "tag": "-tag:v hvc1"}
+            return {
+                "vcodec": "libx265",
+                "crf": "20",
+                "preset": "medium",
+                "tag": "-tag:v hvc1",
+            }
         if codec == "av1":
             return {"vcodec": "libaom-av1", "crf": "20", "preset": "medium", "tag": ""}
         print(f"Unknown codec {codec}, using h264")
         return {"vcodec": "libx264", "crf": "18", "preset": "medium", "tag": ""}
 
-    def create_segment(self, input_video, start_time, end_time, output_file, codec=None):
+    def create_segment(
+        self, input_video, start_time, end_time, output_file, codec=None
+    ):
         """Create a keyframe-aligned segment using stream copy."""
         try:
             self.progress_updated.emit(f"Creating segment: {start_time} to {end_time}")
@@ -101,12 +112,17 @@ class FFmpegHandler(QObject):
             cmd = [
                 self.ffmpeg_path,
                 "-y",
-                "-ss", start_time,
-                "-i", input_video,
-                "-t", str(duration),
-                "-c", "copy",
-                "-map_metadata", "0",
-                output_file
+                "-ss",
+                start_time,
+                "-i",
+                input_video,
+                "-t",
+                str(duration),
+                "-c",
+                "copy",
+                "-map_metadata",
+                "0",
+                output_file,
             ]
             self.progress_updated.emit(f"Running FFmpeg: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, text=True)
@@ -118,14 +134,15 @@ class FFmpegHandler(QObject):
             self.progress_updated.emit(f"FFmpeg error: {error_msg}")
             return False
         except Exception as e:
-            self.progress_updated.emit(f"Error creating segment: {str(e)}")
+            self.progress_updated.emit(f"Error creating segment: {e!s}")
             return False
 
     def calculate_duration(self, start_time, end_time):
         """Calculate a positive duration from HH:MM:SS timestamps."""
         try:
+
             def parse_time(time_str):
-                parts = time_str.split(':')
+                parts = time_str.split(":")
                 if len(parts) != 3:
                     raise ValueError(f"Invalid timestamp: {time_str}")
                 h, m, s = map(int, parts)
@@ -135,10 +152,14 @@ class FFmpegHandler(QObject):
 
             duration = parse_time(end_time) - parse_time(start_time)
             if duration <= 0:
-                raise ValueError(f"End time must be after start time: {start_time} -> {end_time}")
+                raise ValueError(
+                    f"End time must be after start time: {start_time} -> {end_time}"
+                )
             return duration
         except (AttributeError, TypeError, ValueError) as e:
-            raise ValueError(f"Invalid segment timestamps: {start_time} -> {end_time}") from e
+            raise ValueError(
+                f"Invalid segment timestamps: {start_time} -> {end_time}"
+            ) from e
 
     def _write_concat_file(self, concat_file, segment_files):
         """Write an FFmpeg concat manifest with safely quoted paths."""
@@ -158,12 +179,17 @@ class FFmpegHandler(QObject):
             cmd = [
                 self.ffmpeg_path,
                 "-y",
-                "-f", "concat",
-                "-safe", "0",
-                "-i", str(concat_file),
-                "-c", "copy",
-                "-map_metadata", "0",
-                output_file
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(concat_file),
+                "-c",
+                "copy",
+                "-map_metadata",
+                "0",
+                output_file,
             ]
             self.progress_updated.emit(f"Running FFmpeg: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, text=True)
@@ -174,7 +200,7 @@ class FFmpegHandler(QObject):
             self.progress_updated.emit(f"FFmpeg error: {error_msg}")
             return False
         except Exception as e:
-            self.progress_updated.emit(f"Error splicing segments: {str(e)}")
+            self.progress_updated.emit(f"Error splicing segments: {e!s}")
             return False
 
     def cleanup_temp_files(self, pattern="segment_*.mp4"):
@@ -193,7 +219,9 @@ class FFmpegHandler(QObject):
         try:
             self.progress_updated.emit(f"Starting video processing for {input_video}")
             self.temp_root.mkdir(parents=True, exist_ok=True)
-            self.current_operation_dir = Path(tempfile.mkdtemp(prefix="operation_", dir=self.temp_root))
+            self.current_operation_dir = Path(
+                tempfile.mkdtemp(prefix="operation_", dir=self.temp_root)
+            )
 
             input_name = Path(input_video).stem
             output_file = f"Spliced_{input_name}.mp4"
@@ -202,7 +230,9 @@ class FFmpegHandler(QObject):
                 segment_file = self.current_operation_dir / f"segment_{i + 1}.mp4"
                 segment_files.append(segment_file)
                 if not self.create_segment(input_video, start, end, str(segment_file)):
-                    self.operation_complete.emit(False, f"Failed to create segment {i + 1}")
+                    self.operation_complete.emit(
+                        False, f"Failed to create segment {i + 1}"
+                    )
                     return False
 
             if not self.splice_segments(input_video, segment_files, output_file):
@@ -212,7 +242,7 @@ class FFmpegHandler(QObject):
             self.operation_complete.emit(True, f"Processing complete: {output_file}")
             return True
         except Exception as e:
-            self.operation_complete.emit(False, f"Processing error: {str(e)}")
+            self.operation_complete.emit(False, f"Processing error: {e!s}")
             return False
         finally:
             self.cleanup_current_operation()

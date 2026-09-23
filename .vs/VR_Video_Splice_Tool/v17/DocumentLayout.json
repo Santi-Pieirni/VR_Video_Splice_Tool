@@ -1,0 +1,126 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\main.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:python_app\\main.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\vlc_wrapper.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:python_app\\vlc_wrapper.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\ffmpeg_handler.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:python_app\\ffmpeg_handler.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\timestamp_manager.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:python_app\\timestamp_manager.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\video_player.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:python_app\\video_player.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\timeline.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:python_app\\timeline.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "main.py",
+              "DocumentMoniker": "C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\main.py",
+              "RelativeDocumentMoniker": "python_app\\main.py",
+              "ToolTip": "C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\main.py",
+              "RelativeToolTip": "python_app\\main.py",
+              "ViewState": "AgIAAGIBAAAAAAAAAAAYwIEBAAAlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-09-23T02:16:25.861Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "vlc_wrapper.py",
+              "DocumentMoniker": "C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\vlc_wrapper.py",
+              "RelativeDocumentMoniker": "python_app\\vlc_wrapper.py",
+              "ToolTip": "C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\vlc_wrapper.py",
+              "RelativeToolTip": "python_app\\vlc_wrapper.py",
+              "ViewState": "AgIAABUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-09-23T04:03:44.246Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "ffmpeg_handler.py",
+              "DocumentMoniker": "C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\ffmpeg_handler.py",
+              "RelativeDocumentMoniker": "python_app\\ffmpeg_handler.py",
+              "ToolTip": "C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\ffmpeg_handler.py",
+              "RelativeToolTip": "python_app\\ffmpeg_handler.py",
+              "ViewState": "AgIAANUAAAAAAAAAAAAqwAgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-09-23T04:03:41.527Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "timestamp_manager.py",
+              "DocumentMoniker": "C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\timestamp_manager.py",
+              "RelativeDocumentMoniker": "python_app\\timestamp_manager.py",
+              "ToolTip": "C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\timestamp_manager.py",
+              "RelativeToolTip": "python_app\\timestamp_manager.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-09-23T04:03:43.065Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "video_player.py",
+              "DocumentMoniker": "C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\video_player.py",
+              "RelativeDocumentMoniker": "python_app\\video_player.py",
+              "ToolTip": "C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\video_player.py",
+              "RelativeToolTip": "python_app\\video_player.py",
+              "ViewState": "AgIAAEcAAAAAAAAAAAAqwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-09-23T04:03:43.667Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "timeline.py",
+              "DocumentMoniker": "C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\timeline.py",
+              "RelativeDocumentMoniker": "python_app\\timeline.py",
+              "ToolTip": "C:\\Users\\Santi Pierini\\Documents\\Frostbite\\VR_Video_Splice_Tool\\python_app\\timeline.py",
+              "RelativeToolTip": "python_app\\timeline.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAGwBAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-09-23T04:03:42.315Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,14 +1,26 @@
 import os
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QLabel, QFileDialog, QMessageBox
-from PyQt5.QtCore import Qt, QThread, QObject, pyqtSignal, pyqtSlot
-from video_player import VideoPlayer
+
+from PyQt5.QtCore import QObject, Qt, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
 from ffmpeg_handler import FFmpegHandler
 from timeline import TimelinePanel
+from video_player import VideoPlayer
 
 
 class FFmpegWorker(QObject):
     """Runs FFmpeg processing in a background thread."""
+
     progress_updated = pyqtSignal(str)
     operation_complete = pyqtSignal(bool, str)
     finished = pyqtSignal()
@@ -119,7 +131,7 @@ class VRSplicerApp(QMainWindow):
             self,
             "Select VR Video File",
             "",
-            "Video Files (*.mp4 *.mkv *.avi *.mov);;All Files (*)"
+            "Video Files (*.mp4 *.mkv *.avi *.mov);;All Files (*)",
         )
 
         if file_path:
@@ -193,8 +205,8 @@ class VRSplicerApp(QMainWindow):
     def sync_timeline_with_current_segments(self):
         """Sync timeline markers with current segments in timestamp manager"""
         timestamps = self.video_player.get_timestamps()
-        in_points = timestamps['in_points']
-        out_points = timestamps['out_points']
+        in_points = timestamps["in_points"]
+        out_points = timestamps["out_points"]
 
         segment_positions = []
         duration = self.video_player.vlc.get_duration()
@@ -213,7 +225,7 @@ class VRSplicerApp(QMainWindow):
     def parse_timestamp_to_seconds(self, timestamp):
         """Parse HH:MM:SS timestamp to seconds"""
         try:
-            parts = timestamp.split(':')
+            parts = timestamp.split(":")
             if len(parts) == 3:
                 h, m, s = map(int, parts)
                 return h * 3600 + m * 60 + s
@@ -232,8 +244,8 @@ class VRSplicerApp(QMainWindow):
     def update_segment_list(self):
         """Update the segment list with current in/out points"""
         timestamps = self.video_player.get_timestamps()
-        in_points = timestamps['in_points']
-        out_points = timestamps['out_points']
+        in_points = timestamps["in_points"]
+        out_points = timestamps["out_points"]
 
         segments = []
         for i in range(min(len(in_points), len(out_points))):
@@ -270,15 +282,23 @@ class VRSplicerApp(QMainWindow):
             return
 
         timestamps = self.video_player.get_timestamps()
-        in_points = timestamps['in_points']
-        out_points = timestamps['out_points']
+        in_points = timestamps["in_points"]
+        out_points = timestamps["out_points"]
 
         if not in_points or not out_points:
-            QMessageBox.warning(self, "No Segments", "Please set at least one in and out point using I and O keys")
+            QMessageBox.warning(
+                self,
+                "No Segments",
+                "Please set at least one in and out point using I and O keys",
+            )
             return
 
         if len(in_points) != len(out_points):
-            QMessageBox.warning(self, "Incomplete Segments", f"Number of in points ({len(in_points)}) doesn't match out points ({len(out_points)})")
+            QMessageBox.warning(
+                self,
+                "Incomplete Segments",
+                f"Number of in points ({len(in_points)}) doesn't match out points ({len(out_points)})",
+            )
             return
 
         segments = list(zip(in_points, out_points))
@@ -287,7 +307,7 @@ class VRSplicerApp(QMainWindow):
             self,
             "Confirm Processing",
             f"Process {len(segments)} segments from this video?",
-            QMessageBox.Yes | QMessageBox.No
+            QMessageBox.Yes | QMessageBox.No,
         )
 
         if reply != QMessageBox.Yes:
@@ -305,6 +325,12 @@ class VRSplicerApp(QMainWindow):
         self.ffmpeg_worker.operation_complete.connect(self.on_operation_complete)
         self.ffmpeg_worker.finished.connect(self.ffmpeg_thread.quit)
         self.ffmpeg_worker.finished.connect(self.ffmpeg_worker.deleteLater)
+
+        # Ensure we clear Python references when the thread actually finishes to avoid
+        # accessing a deleted C++ QThread wrapper later (which caused the reported error).
+        self.ffmpeg_thread.finished.connect(self.on_ffmpeg_thread_finished)
+
+        # Keep deleteLater so the QThread/C++ object is cleaned up by Qt's event loop.
         self.ffmpeg_thread.finished.connect(self.ffmpeg_worker.deleteLater)
         self.ffmpeg_thread.finished.connect(self.ffmpeg_thread.deleteLater)
         self.ffmpeg_thread.finished.connect(self.finalize_close)
@@ -313,14 +339,21 @@ class VRSplicerApp(QMainWindow):
 
     def closeEvent(self, event):
         """Wait for active FFmpeg processing before allowing the app to close."""
-        if self.ffmpeg_thread is not None and self.ffmpeg_thread.isRunning():
+        # Guard calls to the underlying C++ object — isRunning() can raise
+        # if the C++ QThread has already been deleted; treat that as not running.
+        try:
+            running = self.ffmpeg_thread is not None and self.ffmpeg_thread.isRunning()
+        except RuntimeError:
+            running = False
+
+        if running:
             if not self.close_requested:
                 reply = QMessageBox.question(
                     self,
                     "Processing in Progress",
                     "FFmpeg is still processing. Close the application after processing finishes?",
                     QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.No
+                    QMessageBox.No,
                 )
                 if reply != QMessageBox.Yes:
                     event.ignore()
@@ -339,9 +372,20 @@ class VRSplicerApp(QMainWindow):
         self.video_player.cleanup()
         event.accept()
 
+    def on_ffmpeg_thread_finished(self):
+        """Clear Python references to the QThread and worker after the thread finishes.
+
+        This avoids later attempts to call methods on a wrapped C++ object that has
+        already been deleted by Qt (which raises RuntimeError: wrapped C/C++ object ...).
+        """
+        self.ffmpeg_thread = None
+        self.ffmpeg_worker = None
+
     def finalize_close(self):
         """Close the window once the FFmpeg worker thread has stopped."""
-        if self.close_requested and (self.ffmpeg_thread is None or not self.ffmpeg_thread.isRunning()):
+        if self.close_requested and (
+            self.ffmpeg_thread is None or not self.ffmpeg_thread.isRunning()
+        ):
             self.close()
 
 
@@ -357,7 +401,7 @@ if __name__ == "__main__":
             "FFmpeg is not installed in the required location.\n\n"
             f"Please install FFmpeg so both ffmpeg.exe and ffprobe.exe are located in:\n"
             f"{required_location}\n\n"
-            "The application will now close."
+            "The application will now close.",
         )
         window.close()
         app.quit()
