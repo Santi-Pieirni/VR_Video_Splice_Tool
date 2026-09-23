@@ -209,7 +209,6 @@ class TimelineWidget(QWidget):
             marker_x = 10 + track_width * marker_pos
             if abs(x - marker_x) < 10:
                 self.marker_clicked.emit(i, marker_type)
-                return
 
         # Check if clicked on pending marker
         if self.pending_marker:
@@ -217,9 +216,8 @@ class TimelineWidget(QWidget):
             pending_x = 10 + track_width * pending_pos
             if abs(x - pending_x) < 10:
                 self.marker_clicked.emit(-1, pending_type)  # -1 indicates pending marker
-                return
 
-        # If no marker clicked, emit position for seeking
+        # Always emit position for seeking
         position = max(0, min(1, position))
         self.position_clicked.emit(position)
 
