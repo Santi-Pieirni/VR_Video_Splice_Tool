@@ -285,9 +285,13 @@ class VRSplicerApp(QMainWindow):
     def on_drag_ended(self):
         """Handle timeline drag end - restore playback state"""
         self.is_dragging = False
-        if self.was_playing_before_drag:
+        # Remember the previous playback state.
+        was_playing_before_drag = self.was_playing_before_drag
+        # Clear the saved state so it cannot affect a later drag.
+        self.was_playing_before_drag = False
+        # Resume playback only if it was playing before the drag.
+        if was_playing_before_drag:
             self.video_player.start_playback()
-            self.was_playing_before_drag = False
 
     def update_segment_list(self):
         """Update the segment list with current in/out points"""
