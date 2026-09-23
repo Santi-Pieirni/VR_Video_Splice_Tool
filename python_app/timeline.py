@@ -29,6 +29,11 @@ class TimelineWidget(QWidget):
         self.setMinimumHeight(80)
         self.setStyleSheet("background-color: #2a2a2a; border: 1px solid #444;")
 
+        # Create drag position label (hidden by default)
+        self.drag_label = QLabel(self)
+        self.drag_label.setStyleSheet("background-color: #333; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px;")
+        self.drag_label.hide()
+
     def set_duration(self, duration):
         """Set total video duration in seconds"""
         self.duration = duration
@@ -229,6 +234,20 @@ class TimelineWidget(QWidget):
         position = max(0, min(1, position))
         self.position_clicked.emit(position)
 
+        # Show drag label with current time
+        if self.duration > 0:
+            current_time = position * self.duration
+            time_str = self.format_time(current_time)
+            self.drag_label.setText(time_str)
+            self.drag_label.adjustSize()
+            # Position label above the timeline track
+            track_height = 30
+            track_y = (self.height() - track_height) // 2
+            label_x = x - self.drag_label.width() // 2
+            label_y = track_y - 25
+            self.drag_label.move(label_x, label_y)
+            self.drag_label.show()
+
     def mouseMoveEvent(self, event):
         """Handle mouse dragging on timeline"""
         if self.is_dragging:
@@ -239,9 +258,7 @@ class TimelineWidget(QWidget):
             delta_x = x - self.drag_start_x
             delta_position = delta_x / track_width
 
-            # Apply speed reduction factor (0.75 for 3/4 speed)
-            speed_factor = 0.75
-            new_position = self.drag_start_position + (delta_position * speed_factor)
+            new_position = self.drag_start_position + delta_position
 
             # Clamp to valid range
             new_position = max(0, min(1, new_position))
@@ -249,9 +266,23 @@ class TimelineWidget(QWidget):
             # Emit position for seeking
             self.position_clicked.emit(new_position)
 
+            # Update drag label position and text
+            if self.duration > 0:
+                current_time = new_position * self.duration
+                time_str = self.format_time(current_time)
+                self.drag_label.setText(time_str)
+                self.drag_label.adjustSize()
+                # Position label above the timeline track
+                track_height = 30
+                track_y = (self.height() - track_height) // 2
+                label_x = x - self.drag_label.width() // 2
+                label_y = track_y - 25
+                self.drag_label.move(label_x, label_y)
+
     def mouseReleaseEvent(self, event):
         """Handle mouse release on timeline"""
         self.is_dragging = False
+        self.drag_label.hide()
 
 
 class SegmentListWidget(QWidget):
