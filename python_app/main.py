@@ -41,6 +41,7 @@ class VRSplicerApp(QMainWindow):
         self.ffmpeg_handler = FFmpegHandler()
         self.ffmpeg_thread = None
         self.ffmpeg_worker = None
+        self.close_requested = False
 
         self.init_ui()
 
@@ -248,6 +249,9 @@ class VRSplicerApp(QMainWindow):
 
     def on_operation_complete(self, success, message):
         """Handle FFmpeg operation completion"""
+        if self.close_requested:
+            return
+
         if success:
             QMessageBox.information(self, "Success", message)
             self.progress_label.setText("Processing complete")
@@ -304,6 +308,39 @@ class VRSplicerApp(QMainWindow):
         self.ffmpeg_thread.finished.connect(self.ffmpeg_thread.deleteLater)
 
         self.ffmpeg_thread.start()
+
+    def closeEvent(self, event):
+        """Wait for active FFmpeg processing before allowing the app to close."""
+        if self.ffmpeg_thread is not None and self.ffmpeg_thread.isRunning():
+            if not self.close_requested:
+                reply = QMessageBox.question(
+                    self,
+                    "Processing in Progress",
+                    "FFmpeg is still processing. Close the application after processing finishes?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+                if reply != QMessageBox.Yes:
+                    event.ignore()
+                    return
+
+                self.close_requested = True
+                self.process_button.setEnabled(False)
+                self.progress_label.setText("Finishing processing before closing...")
+                event.ignore()
+                return
+
+            event.ignore()
+            return
+
+        self.ffmpeg_handler.cleanup()
+        self.video_player.cleanup()
+        event.accept()
+
+    def finalize_close(self):
+        """Close the window once the FFmpeg worker thread has stopped."""
+        if self.close_requested and (self.ffmpeg_thread is None or not self.ffmpeg_thread.isRunning()):
+            self.close()
 
 
 if __name__ == "__main__":
