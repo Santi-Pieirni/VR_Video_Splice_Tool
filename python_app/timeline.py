@@ -355,15 +355,60 @@ class SegmentListWidget(QWidget):
         controls_layout = QHBoxLayout()
 
         self.delete_button = QPushButton("Delete")
+        self.delete_button.setObjectName("deleteSegmentButton")
+        self.delete_button.setMinimumWidth(90)
         self.delete_button.setEnabled(False)
         self.delete_button.clicked.connect(self.delete_selected_segment)
         controls_layout.addWidget(self.delete_button)
 
         self.clear_button = QPushButton("Clear All")
+        self.clear_button.setObjectName("clearSegmentsButton")
+        self.clear_button.setMinimumWidth(90)
         self.clear_button.clicked.connect(self.clear_all_segments)
         controls_layout.addWidget(self.clear_button)
 
         layout.addLayout(controls_layout)
+
+        self.setStyleSheet(
+            """
+            #deleteSegmentButton {
+                background-color: #f39c12;
+                color: white;
+                border: 1px solid #d68910;
+                border-radius: 4px;
+                padding: 6px 10px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            #deleteSegmentButton:hover {
+                background-color: #d68910;
+            }
+            #deleteSegmentButton:pressed {
+                background-color: #b9770e;
+            }
+            #deleteSegmentButton:disabled {
+                background-color: #7f8c8d;
+                border-color: #707b7c;
+                color: #cfd4d5;
+            }
+
+            #clearSegmentsButton {
+                background-color: #e74c3c;
+                color: white;
+                border: 1px solid #c0392b;
+                border-radius: 4px;
+                padding: 6px 10px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            #clearSegmentsButton:hover {
+                background-color: #c0392b;
+            }
+            #clearSegmentsButton:pressed {
+                background-color: #922b21;
+            }
+            """
+        )
 
     def add_segment(self, in_point, out_point):
         """Add a segment to the list"""
@@ -445,14 +490,14 @@ class TimelinePanel(QWidget):
 
         # Point status display
         self.point_status_label = QLabel("Ready")
-        self.point_status_label.setStyleSheet("color: gray; font-size: 10px;")
+        self.point_status_label.setStyleSheet("color: white; font-size: 10px;")
         layout.addWidget(self.point_status_label)
 
         # Keyboard shortcuts info
         shortcuts_label = QLabel(
             "Shortcuts: Space=Play/Pause, I=Set In Point, O=Set Out Point"
         )
-        shortcuts_label.setStyleSheet("color: gray; font-size: 10px;")
+        shortcuts_label.setStyleSheet("color: white; font-size: 10px;")
         layout.addWidget(shortcuts_label)
 
         # Segment list

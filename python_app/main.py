@@ -111,9 +111,36 @@ class VRSplicerApp(QMainWindow):
 
         # Process button
         self.process_button = QPushButton("Process Video Segments")
+        self.process_button.setObjectName("processButton")
+        self.process_button.setMinimumHeight(34)
         self.process_button.clicked.connect(self.process_video)
         self.process_button.setEnabled(False)
         ffmpeg_layout.addWidget(self.process_button)
+
+        self.process_button.setStyleSheet(
+            """
+            #processButton {
+                background-color: #6c5ce7;
+                color: white;
+                border: 1px solid #5849c7;
+                border-radius: 4px;
+                padding: 6px 10px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            #processButton:hover {
+                background-color: #5849c7;
+            }
+            #processButton:pressed {
+                background-color: #4637a9;
+            }
+            #processButton:disabled {
+                background-color: #697586;
+                border-color: #5b6675;
+                color: #cfd4d5;
+            }
+            """
+        )
 
         # Progress display
         self.progress_label = QLabel("Ready")
@@ -449,6 +476,20 @@ class VRSplicerApp(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setStyleSheet(
+        """
+        QMainWindow,
+        QMainWindow > QWidget {
+            background-color: #304b61;
+            color: #eef4f8;
+        }
+
+        QLabel {
+            color: #eef4f8;
+        }
+        """
+    )
+
     window = VRSplicerApp()
 
     if not window.ffmpeg_installation_is_available():
