@@ -23,6 +23,9 @@ class TimelineWidget(QWidget):
         self.markers = []  # List of (position, type) tuples, type is 'in' or 'out'
         self.pending_marker = None  # (position, type) for pending marker, type is 'pending_in'
         self.current_position = 0
+        self.is_dragging = False
+        self.drag_start_position = 0
+        self.drag_start_x = 0
         self.setMinimumHeight(80)
         self.setStyleSheet("background-color: #2a2a2a; border: 1px solid #444;")
 
@@ -217,9 +220,38 @@ class TimelineWidget(QWidget):
             if abs(x - pending_x) < 10:
                 self.marker_clicked.emit(-1, pending_type)  # -1 indicates pending marker
 
+        # Start dragging
+        self.is_dragging = True
+        self.drag_start_position = position
+        self.drag_start_x = x
+
         # Always emit position for seeking
         position = max(0, min(1, position))
         self.position_clicked.emit(position)
+
+    def mouseMoveEvent(self, event):
+        """Handle mouse dragging on timeline"""
+        if self.is_dragging:
+            x = event.x()
+            track_width = self.width() - 20
+
+            # Calculate the delta from the start position
+            delta_x = x - self.drag_start_x
+            delta_position = delta_x / track_width
+
+            # Apply speed reduction factor (0.75 for 3/4 speed)
+            speed_factor = 0.75
+            new_position = self.drag_start_position + (delta_position * speed_factor)
+
+            # Clamp to valid range
+            new_position = max(0, min(1, new_position))
+
+            # Emit position for seeking
+            self.position_clicked.emit(new_position)
+
+    def mouseReleaseEvent(self, event):
+        """Handle mouse release on timeline"""
+        self.is_dragging = False
 
 
 class SegmentListWidget(QWidget):
