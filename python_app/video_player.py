@@ -61,11 +61,17 @@ class VideoPlayer(QWidget):
 
         # Play/Pause button (center)
         self.play_button = QPushButton("Play")
+        self.play_button.setObjectName("playButton")
+        self.play_button.setToolTip("Play / Pause (Space)")
+        self.play_button.setMinimumWidth(70)
         self.play_button.clicked.connect(self.toggle_playback)
         controls_layout.addWidget(self.play_button)
 
         # Stop button (center)
         self.stop_button = QPushButton("Stop")
+        self.stop_button.setObjectName("stopButton")
+        self.stop_button.setToolTip("Stop playback")
+        self.stop_button.setMinimumWidth(70)
         self.stop_button.clicked.connect(self.stop_playback)
         controls_layout.addWidget(self.stop_button)
 
@@ -85,6 +91,40 @@ class VideoPlayer(QWidget):
         controls_layout.addWidget(self.time_label)
 
         layout.addLayout(controls_layout)
+
+        # Button color theming: green tinted play, red tinted stop, with hover/pressed states
+        # Use object names so only these buttons are affected.
+        self.setStyleSheet(
+            """
+            #playButton {
+                background-color: #2ecc71;
+                color: white;
+                border: 1px solid #27ae60;
+                border-radius: 4px;
+                padding: 6px 10px;
+            }
+            #playButton:hover {
+                background-color: #27ae60;
+            }
+            #playButton:pressed {
+                background-color: #1e8449;
+            }
+
+            #stopButton {
+                background-color: #e74c3c;
+                color: white;
+                border: 1px solid #c0392b;
+                border-radius: 4px;
+                padding: 6px 10px;
+            }
+            #stopButton:hover {
+                background-color: #c0392b;
+            }
+            #stopButton:pressed {
+                background-color: #922b21;
+            }
+            """
+        )
 
         # Initialize VLC
         self.vlc.init_vlc(self.video_widget)
