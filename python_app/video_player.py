@@ -8,6 +8,8 @@ from vlc_wrapper import VLCWrapper
 class VideoPlayer(QWidget):
     in_point_set = pyqtSignal(str)  # Timestamp string when in point is set
     out_point_set = pyqtSignal(str)  # Timestamp string when out point is set
+    pending_in_point_set = pyqtSignal(str)  # Timestamp string when pending in point is set
+    state_changed = pyqtSignal(str)  # State change from timestamp manager
     position_changed = pyqtSignal(float)  # Current position in seconds
 
     def __init__(self):
@@ -29,6 +31,8 @@ class VideoPlayer(QWidget):
         # Connect timestamp manager signals
         self.timestamp_manager.in_point_set.connect(self.in_point_set)
         self.timestamp_manager.out_point_set.connect(self.out_point_set)
+        self.timestamp_manager.pending_in_point_set.connect(self.pending_in_point_set)
+        self.timestamp_manager.state_changed.connect(self.state_changed)
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -224,6 +228,18 @@ class VideoPlayer(QWidget):
     def clear_timestamps(self):
         """Clear all recorded timestamps"""
         self.timestamp_manager.clear_timestamps()
+
+    def get_state(self):
+        """Get current timestamp manager state"""
+        return self.timestamp_manager.get_state()
+
+    def get_pending_in_point(self):
+        """Get current pending in point"""
+        return self.timestamp_manager.get_pending_in_point()
+
+    def reset_active_pair(self):
+        """Reset the current in-progress pair"""
+        self.timestamp_manager.reset_active_pair()
 
     def cleanup(self):
         """Clean up resources"""
