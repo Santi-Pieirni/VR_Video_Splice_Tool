@@ -55,6 +55,8 @@ class VRSplicerApp(QMainWindow):
         self.ffmpeg_thread = None
         self.ffmpeg_worker = None
         self.close_requested = False
+        self.was_playing_before_drag = False
+        self.is_dragging = False
 
         self.init_ui()
 
@@ -100,6 +102,8 @@ class VRSplicerApp(QMainWindow):
         self.timeline_panel.segment_deleted.connect(self.on_segment_deleted)
         self.timeline_panel.seek_to_position.connect(self.on_timeline_seek)
         self.timeline_panel.all_segments_cleared.connect(self.on_all_segments_cleared)
+        self.timeline_panel.drag_started.connect(self.on_drag_started)
+        self.timeline_panel.drag_ended.connect(self.on_drag_ended)
         layout.addWidget(self.timeline_panel)
 
         # FFmpeg controls
@@ -268,6 +272,22 @@ class VRSplicerApp(QMainWindow):
             if duration > 0:
                 seek_time = position * duration
                 self.video_player.seek_to_time(seek_time)
+
+                # Pause during drag to prevent VLC from resuming playback when mouse stops
+                if self.is_dragging:
+                    self.video_player.pause_playback()
+
+    def on_drag_started(self):
+        """Handle timeline drag start - store playback state"""
+        self.was_playing_before_drag = self.video_player.vlc.is_playing
+        self.is_dragging = True
+
+    def on_drag_ended(self):
+        """Handle timeline drag end - restore playback state"""
+        self.is_dragging = False
+        if self.was_playing_before_drag:
+            self.video_player.start_playback()
+            self.was_playing_before_drag = False
 
     def update_segment_list(self):
         """Update the segment list with current in/out points"""

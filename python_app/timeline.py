@@ -16,6 +16,8 @@ class TimelineWidget(QWidget):
 
     marker_clicked = pyqtSignal(int, str)  # marker_index, marker_type (in/out)
     position_clicked = pyqtSignal(float)  # position 0.0-1.0 when timeline is clicked
+    drag_started = pyqtSignal()  # Emitted when drag starts
+    drag_ended = pyqtSignal()  # Emitted when drag ends
 
     def __init__(self):
         super().__init__()
@@ -229,6 +231,7 @@ class TimelineWidget(QWidget):
         self.is_dragging = True
         self.drag_start_position = position
         self.drag_start_x = x
+        self.drag_started.emit()
 
         # Always emit position for seeking
         position = max(0, min(1, position))
@@ -283,6 +286,7 @@ class TimelineWidget(QWidget):
         """Handle mouse release on timeline"""
         self.is_dragging = False
         self.drag_label.hide()
+        self.drag_ended.emit()
 
 
 class SegmentListWidget(QWidget):
@@ -399,6 +403,8 @@ class TimelinePanel(QWidget):
     segment_selected = pyqtSignal(int)  # Segment index
     seek_to_position = pyqtSignal(float)  # Position 0.0-1.0
     all_segments_cleared = pyqtSignal()  # All segments cleared
+    drag_started = pyqtSignal()  # Timeline drag started
+    drag_ended = pyqtSignal()  # Timeline drag ended
 
     def __init__(self):
         super().__init__()
@@ -412,6 +418,8 @@ class TimelinePanel(QWidget):
         self.timeline = TimelineWidget()
         self.timeline.marker_clicked.connect(self.on_marker_clicked)
         self.timeline.position_clicked.connect(self.on_position_clicked)
+        self.timeline.drag_started.connect(self.drag_started)
+        self.timeline.drag_ended.connect(self.drag_ended)
         layout.addWidget(self.timeline)
 
         # Point status display
