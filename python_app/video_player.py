@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QCoreApplication, Qt, QTimer, pyqtSignal
-from PyQt5.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
 
 from timestamp_manager import TimestampManager
 from vlc_wrapper import VLCWrapper
@@ -45,6 +45,7 @@ class VideoPlayer(QWidget):
         # Video widget (VLC will render here)
         self.video_widget = QWidget()
         self.video_widget.setStyleSheet("background-color: #000; min-height: 400px;")
+        self.video_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(self.video_widget)
 
         # Controls
