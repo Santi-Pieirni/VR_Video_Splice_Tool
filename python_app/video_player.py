@@ -124,14 +124,14 @@ class VideoPlayer(QWidget):
         # Jump back 15 seconds (left)
         self.jump_back_15_button = QPushButton("-15s")
         self.jump_back_15_button.setObjectName("jumpButton")
-        self.jump_back_15_button.setMinimumWidth(55)
+        self.jump_back_15_button.setMinimumWidth(155)
         self.jump_back_15_button.clicked.connect(self.jump_back_15)
         controls_layout.addWidget(self.jump_back_15_button)
 
         # Jump back 5 seconds
         self.jump_back_5_button = QPushButton("-5s")
         self.jump_back_5_button.setObjectName("jumpButton")
-        self.jump_back_5_button.setMinimumWidth(55)
+        self.jump_back_5_button.setMinimumWidth(155)
         self.jump_back_5_button.clicked.connect(self.jump_back_5)
         controls_layout.addWidget(self.jump_back_5_button)
 
@@ -139,7 +139,7 @@ class VideoPlayer(QWidget):
         self.play_button = QPushButton("Play")
         self.play_button.setObjectName("playButton")
         self.play_button.setToolTip("Play / Pause (Space)")
-        self.play_button.setMinimumWidth(70)
+        self.play_button.setMinimumWidth(170)
         self.play_button.clicked.connect(self.toggle_playback)
         controls_layout.addWidget(self.play_button)
 
@@ -147,45 +147,52 @@ class VideoPlayer(QWidget):
         self.stop_button = QPushButton("Stop")
         self.stop_button.setObjectName("stopButton")
         self.stop_button.setToolTip("Stop playback")
-        self.stop_button.setMinimumWidth(70)
+        self.stop_button.setMinimumWidth(170)
         self.stop_button.clicked.connect(self.stop_playback)
         controls_layout.addWidget(self.stop_button)
 
         # Jump forward 5 seconds
         self.jump_forward_5_button = QPushButton("+5s")
         self.jump_forward_5_button.setObjectName("jumpButton")
-        self.jump_forward_5_button.setMinimumWidth(55)
+        self.jump_forward_5_button.setMinimumWidth(155)
         self.jump_forward_5_button.clicked.connect(self.jump_forward_5)
         controls_layout.addWidget(self.jump_forward_5_button)
 
         # Jump forward 15 seconds (right)
         self.jump_forward_15_button = QPushButton("+15s")
         self.jump_forward_15_button.setObjectName("jumpButton")
-        self.jump_forward_15_button.setMinimumWidth(55)
+        self.jump_forward_15_button.setMinimumWidth(155)
         self.jump_forward_15_button.clicked.connect(self.jump_forward_15)
         controls_layout.addWidget(self.jump_forward_15_button)
 
-        layout.addLayout(controls_layout)
-
-        # Time label moved below the buttons so it sits above the timeline (left-aligned)
-        # Container provides contrast, larger text, padding and left alignment.
-        time_container_wrapper = QHBoxLayout()  # Horizontal wrapper
+        # Current and total time
+        time_container_wrapper = QHBoxLayout()
 
         self.time_container = QWidget()
         self.time_container.setObjectName("timeContainer")
         time_container_layout = QHBoxLayout()
-        # Indent so the left edge of the label lines up with the timeline track (timeline has ~10px inset)
         time_container_layout.setContentsMargins(10, 6, 10, 6)
         time_container_layout.setSpacing(0)
         self.time_container.setLayout(time_container_layout)
 
         self.time_label = QLabel("00:00:00 / 00:00:00")
         self.time_label.setObjectName("timeLabel")
-        time_container_layout.addWidget(self.time_label, alignment=Qt.AlignLeft)
+        time_container_layout.addWidget(
+            self.time_label,
+            alignment=Qt.AlignLeft,
+        )
 
         time_container_wrapper.addWidget(self.time_container)
         time_container_wrapper.addStretch()
-        layout.addLayout(time_container_wrapper)
+
+        # Row 2: time label followed by centered playback buttons
+        control_row = QHBoxLayout()
+        control_row.addWidget(self.time_container)
+        control_row.addStretch(1)
+        control_row.addLayout(controls_layout)
+        control_row.addStretch(1)
+
+        layout.addLayout(control_row)
 
         # Button color theming: green tinted play, red tinted stop, with hover/pressed states
         # Use object names so only these buttons are affected.
@@ -237,6 +244,7 @@ class VideoPlayer(QWidget):
                 background-color: #3a3a3a;
                 border: 1px solid #555;
                 border-radius: 6px;
+                border-color: #FFD700;
             }
             #timeLabel {
                 color: white;
@@ -469,3 +477,8 @@ class VideoPlayer(QWidget):
     def grab_focus(self):
         """Grab keyboard focus for I/O key events"""
         self.setFocus()
+
+    def set_timeline_widget(self, timeline_widget):
+        """Insert the timeline between the video and playback controls."""
+        timeline_widget.setParent(self)
+        self.layout().insertWidget(1, timeline_widget)

@@ -85,14 +85,21 @@ class VRSplicerApp(QMainWindow):
         self.video_player = VideoPlayer()
         layout.addWidget(self.video_player)
 
-        # Timeline panel (under video player controls)
+        # Timeline panel
         self.timeline_panel = TimelinePanel()
+
+        timeline_item = self.timeline_panel.layout().takeAt(0)
+        timeline_widget = timeline_item.widget()
+
+        self.video_player.set_timeline_widget(timeline_widget)
+
         self.timeline_panel.segment_selected.connect(self.on_segment_selected)
         self.timeline_panel.segment_deleted.connect(self.on_segment_deleted)
         self.timeline_panel.seek_to_position.connect(self.on_timeline_seek)
         self.timeline_panel.all_segments_cleared.connect(self.on_all_segments_cleared)
         self.timeline_panel.drag_started.connect(self.on_drag_started)
         self.timeline_panel.drag_ended.connect(self.on_drag_ended)
+
         layout.addWidget(self.timeline_panel)
 
         # FFmpeg controls
