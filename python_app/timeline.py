@@ -23,7 +23,9 @@ class TimelineWidget(QWidget):
         super().__init__()
         self.duration = 0
         self.markers = []  # List of (position, type) tuples, type is 'in' or 'out'
-        self.pending_marker = None  # (position, type) for pending marker, type is 'pending_in'
+        self.pending_marker = (
+            None  # (position, type) for pending marker, type is 'pending_in'
+        )
         self.current_position = 0
         self.is_dragging = False
         self.drag_start_position = 0
@@ -42,7 +44,9 @@ class TimelineWidget(QWidget):
 
         # Create drag position label (hidden by default)
         self.drag_label = QLabel(self)
-        self.drag_label.setStyleSheet("background-color: #333; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px;")
+        self.drag_label.setStyleSheet(
+            "background-color: #333; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px;"
+        )
         self.drag_label.hide()
 
     def set_duration(self, duration):
@@ -246,7 +250,9 @@ class TimelineWidget(QWidget):
             pending_pos, pending_type = self.pending_marker
             pending_x = 10 + track_width * pending_pos
             if abs(x - pending_x) < 10:
-                self.marker_clicked.emit(-1, pending_type)  # -1 indicates pending marker
+                self.marker_clicked.emit(
+                    -1, pending_type
+                )  # -1 indicates pending marker
 
         # Start dragging
         self.is_dragging = True

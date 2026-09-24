@@ -1,5 +1,60 @@
 from PyQt5.QtCore import QCoreApplication, Qt, QTimer, pyqtSignal
-from PyQt5.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
+
+
+class ResizeHandle(QFrame):
+    """Custom resize handle for vertical resizing"""
+
+    def __init__(self, parent_widget):
+        super().__init__()
+        self.parent_widget = parent_widget
+        self.setFrameShape(QFrame.HLine)
+        self.setStyleSheet("background-color: #555; min-height: 8px; max-height: 8px;")
+        self.setCursor(Qt.SizeVerCursor)  # Set the resize cursor properly
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self.resizing = False
+        self.resize_start_y = 0
+        self.resize_start_height = 0
+
+    def mousePressEvent(self, event):
+        """Handle mouse press on resize handle"""
+        if event.button() == Qt.LeftButton:
+            self.resizing = True
+            self.resize_start_y = event.globalY()
+            self.resize_start_height = self.parent_widget.height()
+            event.accept()
+        else:
+            event.ignore()
+
+    def mouseMoveEvent(self, event):
+        """Handle mouse move during resizing"""
+        if self.resizing:
+            delta = event.globalY() - self.resize_start_y
+            new_height = self.resize_start_height + delta
+            # Set minimum height to 200px
+            new_height = max(200, new_height)
+            self.parent_widget.setFixedHeight(new_height)
+            event.accept()
+        else:
+            event.ignore()
+
+    def mouseReleaseEvent(self, event):
+        """Handle mouse release to stop resizing"""
+        if event.button() == Qt.LeftButton:
+            self.resizing = False
+            event.accept()
+        else:
+            event.ignore()
+
 
 from timestamp_manager import TimestampManager
 from vlc_wrapper import VLCWrapper
@@ -8,7 +63,9 @@ from vlc_wrapper import VLCWrapper
 class VideoPlayer(QWidget):
     in_point_set = pyqtSignal(str)  # Timestamp string when in point is set
     out_point_set = pyqtSignal(str)  # Timestamp string when out point is set
-    pending_in_point_set = pyqtSignal(str)  # Timestamp string when pending in point is set
+    pending_in_point_set = pyqtSignal(
+        str
+    )  # Timestamp string when pending in point is set
     state_changed = pyqtSignal(str)  # State change from timestamp manager
     position_changed = pyqtSignal(float)  # Current position in seconds
 
@@ -42,11 +99,24 @@ class VideoPlayer(QWidget):
         # Make this widget focusable to receive keyboard events
         self.setFocusPolicy(Qt.StrongFocus)
 
+        # Video widget container (holds video + resize handle)
+        self.video_container = QWidget()
+        self.video_container.setStyleSheet("background-color: #000; min-height: 400px;")
+        self.video_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        video_container_layout = QVBoxLayout()
+        video_container_layout.setContentsMargins(0, 0, 0, 0)
+        video_container_layout.setSpacing(0)
+        self.video_container.setLayout(video_container_layout)
+
         # Video widget (VLC will render here)
         self.video_widget = QWidget()
-        self.video_widget.setStyleSheet("background-color: #000; min-height: 400px;")
-        self.video_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        layout.addWidget(self.video_widget)
+        video_container_layout.addWidget(self.video_widget)
+
+        # Add vertical resize handle on bottom edge
+        self.resize_handle = ResizeHandle(self.video_container)
+        video_container_layout.addWidget(self.resize_handle)
+
+        layout.addWidget(self.video_container)
 
         # Controls
         controls_layout = QHBoxLayout()
@@ -186,7 +256,7 @@ class VideoPlayer(QWidget):
             """
         )
 
-        # Initialize VLC
+        # Initialize VLC (still renders to the inner video_widget)
         self.vlc.init_vlc(self.video_widget)
 
     def load_video(self, file_path):
