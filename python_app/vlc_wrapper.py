@@ -52,9 +52,24 @@ class VLCWrapper(QObject):
             self.media = self.instance.media_new(file_path)
             self.player.set_media(self.media)
 
-            # Parse the media to get duration
+            # Parse the media first to get video info
             self.media.parse()
             self.duration = self.player.get_length() / 1000
+
+            # Apply crop filter for single-eye preview (left half of side-by-side video)
+            # Get video dimensions for explicit pixel cropping
+            # Format: "WIDTHxHEIGHT+X+Y" 
+            video_width, video_height = self.player.video_get_size()
+            print(f"Video dimensions: {video_width}x{video_height}")
+            
+            if video_width > 0 and video_height > 0:
+                # Crop to left half: width/2 x full height, starting at 0,0
+                crop_width = video_width // 2
+                crop_geometry = f"{crop_width}x{video_height}+0+0"
+                self.player.video_set_crop_geometry(crop_geometry)
+                print(f"Crop geometry set to: {crop_geometry}")
+            else:
+                print("Could not get video dimensions, skipping crop")
 
             # Handle VLC error case (-1 means unknown duration)
             if self.duration <= 0:
