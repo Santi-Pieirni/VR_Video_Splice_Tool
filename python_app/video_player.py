@@ -101,7 +101,7 @@ class VideoPlayer(QWidget):
 
         # Video widget container (holds video + resize handle)
         self.video_container = QWidget()
-        self.video_container.setStyleSheet("background-color: #000; min-height: 400px;")
+        self.video_container.setStyleSheet("background-color: #000; min-height: 600px;")
         self.video_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         video_container_layout = QVBoxLayout()
         video_container_layout.setContentsMargins(0, 0, 0, 0)
