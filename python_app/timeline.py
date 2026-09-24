@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QPointF, QRectF, Qt, pyqtSignal
-from PyQt5.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygonF
+from PyQt5.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPen, QPolygonF
 from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -23,17 +23,30 @@ class TimelineWidget(QWidget):
         super().__init__()
         self.duration = 0
         self.markers = []  # List of (position, type) tuples, type is 'in' or 'out'
-        self.pending_marker = None  # (position, type) for pending marker, type is 'pending_in'
+        self.pending_marker = (
+            None  # (position, type) for pending marker, type is 'pending_in'
+        )
         self.current_position = 0
         self.is_dragging = False
         self.drag_start_position = 0
         self.drag_start_x = 0
         self.setMinimumHeight(80)
-        self.setStyleSheet("background-color: #2a2a2a; border: 1px solid #444;")
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setStyleSheet(
+            """
+            TimelineWidget {
+                background-color: #2a2a2a;
+                border: 1px solid #444;
+                border-radius: 6px;
+            }
+            """
+        )
 
         # Create drag position label (hidden by default)
         self.drag_label = QLabel(self)
-        self.drag_label.setStyleSheet("background-color: #333; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px;")
+        self.drag_label.setStyleSheet(
+            "background-color: #333; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px;"
+        )
         self.drag_label.hide()
 
     def set_duration(self, duration):
@@ -111,8 +124,14 @@ class TimelineWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        # Draw background
-        painter.fillRect(self.rect(), QColor(42, 42, 42))
+        outer_rect = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        outer_path = QPainterPath()
+        outer_path.addRoundedRect(outer_rect, 6, 6)
+
+        # Keep all custom drawing inside the rounded outer corners.
+        painter.setClipPath(outer_path)
+
+        painter.fillPath(outer_path, QColor(42, 42, 42))
 
         # Draw timeline track
         track_height = 30
@@ -208,6 +227,12 @@ class TimelineWidget(QWidget):
                 int(x), int(track_y - 5), int(x), int(track_y + track_height + 5)
             )
 
+        # Draw the rounded outer border on top of the timeline contents.
+        painter.setClipping(False)
+        painter.setBrush(Qt.NoBrush)
+        painter.setPen(QPen(QColor(68, 68, 68), 1))
+        painter.drawRoundedRect(outer_rect, 6, 6)
+
     def mousePressEvent(self, event):
         """Handle mouse clicks on timeline"""
         x = event.x()
@@ -225,7 +250,9 @@ class TimelineWidget(QWidget):
             pending_pos, pending_type = self.pending_marker
             pending_x = 10 + track_width * pending_pos
             if abs(x - pending_x) < 10:
-                self.marker_clicked.emit(-1, pending_type)  # -1 indicates pending marker
+                self.marker_clicked.emit(
+                    -1, pending_type
+                )  # -1 indicates pending marker
 
         # Start dragging
         self.is_dragging = True
@@ -334,15 +361,60 @@ class SegmentListWidget(QWidget):
         controls_layout = QHBoxLayout()
 
         self.delete_button = QPushButton("Delete")
+        self.delete_button.setObjectName("deleteSegmentButton")
+        self.delete_button.setMinimumWidth(90)
         self.delete_button.setEnabled(False)
         self.delete_button.clicked.connect(self.delete_selected_segment)
         controls_layout.addWidget(self.delete_button)
 
         self.clear_button = QPushButton("Clear All")
+        self.clear_button.setObjectName("clearSegmentsButton")
+        self.clear_button.setMinimumWidth(90)
         self.clear_button.clicked.connect(self.clear_all_segments)
         controls_layout.addWidget(self.clear_button)
 
         layout.addLayout(controls_layout)
+
+        self.setStyleSheet(
+            """
+            #deleteSegmentButton {
+                background-color: #f39c12;
+                color: white;
+                border: 1px solid #d68910;
+                border-radius: 4px;
+                padding: 6px 10px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            #deleteSegmentButton:hover {
+                background-color: #d68910;
+            }
+            #deleteSegmentButton:pressed {
+                background-color: #b9770e;
+            }
+            #deleteSegmentButton:disabled {
+                background-color: #7f8c8d;
+                border-color: #707b7c;
+                color: #cfd4d5;
+            }
+
+            #clearSegmentsButton {
+                background-color: #e74c3c;
+                color: white;
+                border: 1px solid #c0392b;
+                border-radius: 4px;
+                padding: 6px 10px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            #clearSegmentsButton:hover {
+                background-color: #c0392b;
+            }
+            #clearSegmentsButton:pressed {
+                background-color: #922b21;
+            }
+            """
+        )
 
     def add_segment(self, in_point, out_point):
         """Add a segment to the list"""
@@ -424,14 +496,14 @@ class TimelinePanel(QWidget):
 
         # Point status display
         self.point_status_label = QLabel("Ready")
-        self.point_status_label.setStyleSheet("color: gray; font-size: 10px;")
+        self.point_status_label.setStyleSheet("color: white; font-size: 10px;")
         layout.addWidget(self.point_status_label)
 
         # Keyboard shortcuts info
         shortcuts_label = QLabel(
             "Shortcuts: Space=Play/Pause, I=Set In Point, O=Set Out Point"
         )
-        shortcuts_label.setStyleSheet("color: gray; font-size: 10px;")
+        shortcuts_label.setStyleSheet("color: white; font-size: 10px;")
         layout.addWidget(shortcuts_label)
 
         # Segment list
@@ -440,6 +512,8 @@ class TimelinePanel(QWidget):
         self.segment_list.segment_deleted.connect(self.segment_deleted)
         self.segment_list.all_segments_cleared.connect(self.on_all_segments_cleared)
         layout.addWidget(self.segment_list)
+
+        layout.setContentsMargins(10, 0, 10, 10)
 
     def set_duration(self, duration):
         """Set video duration"""

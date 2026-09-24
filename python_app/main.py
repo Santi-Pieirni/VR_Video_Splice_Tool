@@ -1,15 +1,18 @@
 import os
 import sys
 
-from PyQt5.QtCore import QObject, Qt, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QFileInfo, QObject, Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import (
     QApplication,
     QFileDialog,
     QLabel,
+    QGridLayout,
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
+    QHBoxLayout,
     QWidget,
 )
 
@@ -77,43 +80,133 @@ class VRSplicerApp(QMainWindow):
         layout = QVBoxLayout()
         central_widget.setLayout(layout)
 
-        # Title
-        title_label = QLabel("VR Video Splicer - 180° Stereoscopic 3D")
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
-        title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title_label)
-
-        # File selection
-        self.file_label = QLabel("No video file selected")
-        self.file_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.file_label)
-
-        select_button = QPushButton("Select Video File")
-        select_button.clicked.connect(self.select_video_file)
-        layout.addWidget(select_button)
 
         # Video player
         self.video_player = VideoPlayer()
         layout.addWidget(self.video_player)
 
-        # Timeline panel (under video player controls)
+        # Timeline panel
         self.timeline_panel = TimelinePanel()
+
+        timeline_item = self.timeline_panel.layout().takeAt(0)
+        timeline_widget = timeline_item.widget()
+
+        self.video_player.set_timeline_widget(timeline_widget)
+
         self.timeline_panel.segment_selected.connect(self.on_segment_selected)
         self.timeline_panel.segment_deleted.connect(self.on_segment_deleted)
         self.timeline_panel.seek_to_position.connect(self.on_timeline_seek)
         self.timeline_panel.all_segments_cleared.connect(self.on_all_segments_cleared)
         self.timeline_panel.drag_started.connect(self.on_drag_started)
         self.timeline_panel.drag_ended.connect(self.on_drag_ended)
+
         layout.addWidget(self.timeline_panel)
 
         # FFmpeg controls
         ffmpeg_layout = QVBoxLayout()
 
+        # File selection and processing controls
+        bottom_row_widget = QWidget()
+        bottom_row_layout = QGridLayout()
+        bottom_row_layout.setHorizontalSpacing(8)
+        bottom_row_layout.setVerticalSpacing(8)
+        bottom_row_layout.setContentsMargins(0, 8, 0, 8)
+        bottom_row_widget.setLayout(bottom_row_layout)
+
+        # Filename display
+        self.file_label = QLabel("No video selected")
+        self.file_label.setObjectName("selectedFileLabel")
+        self.file_label.setToolTip("No video selected")
+        self.file_label.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Fixed,
+        )
+        bottom_row_layout.addWidget(self.file_label, 0, 1, 1, 2)
+
+        # Browse button
+        select_button = QPushButton("Browse...")
+        select_button.setObjectName("browseButton")
+        select_button.setFixedWidth(100)
+        select_button.clicked.connect(self.select_video_file)
+        bottom_row_layout.addWidget(select_button, 1, 1)
+
         # Process button
         self.process_button = QPushButton("Process Video Segments")
+        self.process_button.setObjectName("processButton")
+        self.process_button.setMinimumHeight(34)
         self.process_button.clicked.connect(self.process_video)
         self.process_button.setEnabled(False)
-        ffmpeg_layout.addWidget(self.process_button)
+        bottom_row_layout.addWidget(self.process_button, 1, 2)
+
+        # Allow the filename and process button to expand horizontally
+        bottom_row_layout.setColumnStretch(1, 1)
+        bottom_row_layout.setColumnStretch(2, 1)
+
+        ffmpeg_layout.addWidget(bottom_row_widget)
+
+        # Apply styling to file selection elements
+        bottom_row_widget.setStyleSheet(
+            """
+            #sourceVideoLabel {
+                color: #dce8ef;
+                font-size: 11px;
+                font-weight: bold;
+            }
+
+            #selectedFileLabel {
+                background-color: #1f1f1f;
+                color: white;
+                border: 1px solid #d6e0e8;
+                border-radius: 2px;
+                padding: 5px 10px;
+                font-size: 13px;
+                max-width: 400px;
+            }
+
+            #browseButton {
+                background-color: #1f1f1f;
+                color: white;
+                border: 1px solid #d6e0e8;
+                border-radius: 2px;
+                padding: 5px 10px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+
+            #browseButton:hover {
+                background-color: #3a5870;
+            }
+
+            #browseButton:pressed {
+                background-color: #506d84;
+            }
+            """
+        )
+
+        self.process_button.setStyleSheet(
+            """
+            #processButton {
+                background-color: #6c5ce7;
+                color: white;
+                border: 1px solid #5849c7;
+                border-radius: 4px;
+                padding: 6px 10px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            #processButton:hover {
+                background-color: #5849c7;
+            }
+            #processButton:pressed {
+                background-color: #4637a9;
+            }
+            #processButton:disabled {
+                background-color: #697586;
+                border-color: #5b6675;
+                color: #cfd4d5;
+            }
+            """
+        )
 
         # Progress display
         self.progress_label = QLabel("Ready")
@@ -142,7 +235,10 @@ class VRSplicerApp(QMainWindow):
         )
 
         if file_path:
-            self.file_label.setText(f"Selected: {file_path}")
+            file_name = QFileInfo(file_path).fileName()
+            self.file_label.setText(file_name)
+            self.file_label.setToolTip(file_path)
+            self.file_label.adjustSize()
             self.current_video = file_path
 
             # Load video into player
@@ -357,7 +453,7 @@ class VRSplicerApp(QMainWindow):
 
         # Stop video playback first (same as clicking stop button)
         self.video_player.stop_playback()
-        
+
         reply = QMessageBox.question(
             self,
             "Confirm Processing",
@@ -425,7 +521,7 @@ class VRSplicerApp(QMainWindow):
 
         # Stop video playback before cleanup
         self.video_player.stop_playback()
-        
+
         self.ffmpeg_handler.cleanup()
         self.video_player.cleanup()
         event.accept()
@@ -449,6 +545,20 @@ class VRSplicerApp(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setStyleSheet(
+        """
+        QMainWindow,
+        QMainWindow > QWidget {
+            background-color: #304b61;
+            color: #eef4f8;
+        }
+
+        QLabel {
+            color: #eef4f8;
+        }
+        """
+    )
+
     window = VRSplicerApp()
 
     if not window.ffmpeg_installation_is_available():
