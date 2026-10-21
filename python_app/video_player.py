@@ -1,5 +1,60 @@
 from PyQt5.QtCore import QCoreApplication, Qt, QTimer, pyqtSignal
-from PyQt5.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
+
+
+class ResizeHandle(QFrame):
+    """Custom resize handle for vertical resizing"""
+
+    def __init__(self, parent_widget):
+        super().__init__()
+        self.parent_widget = parent_widget
+        self.setFrameShape(QFrame.HLine)
+        self.setStyleSheet("background-color: #555; min-height: 8px; max-height: 8px;")
+        self.setCursor(Qt.SizeVerCursor)  # Set the resize cursor properly
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self.resizing = False
+        self.resize_start_y = 0
+        self.resize_start_height = 0
+
+    def mousePressEvent(self, event):
+        """Handle mouse press on resize handle"""
+        if event.button() == Qt.LeftButton:
+            self.resizing = True
+            self.resize_start_y = event.globalY()
+            self.resize_start_height = self.parent_widget.height()
+            event.accept()
+        else:
+            event.ignore()
+
+    def mouseMoveEvent(self, event):
+        """Handle mouse move during resizing"""
+        if self.resizing:
+            delta = event.globalY() - self.resize_start_y
+            new_height = self.resize_start_height + delta
+            # Set minimum height to 200px
+            new_height = max(200, new_height)
+            self.parent_widget.setFixedHeight(new_height)
+            event.accept()
+        else:
+            event.ignore()
+
+    def mouseReleaseEvent(self, event):
+        """Handle mouse release to stop resizing"""
+        if event.button() == Qt.LeftButton:
+            self.resizing = False
+            event.accept()
+        else:
+            event.ignore()
+
 
 from timestamp_manager import TimestampManager
 from vlc_wrapper import VLCWrapper
@@ -8,7 +63,9 @@ from vlc_wrapper import VLCWrapper
 class VideoPlayer(QWidget):
     in_point_set = pyqtSignal(str)  # Timestamp string when in point is set
     out_point_set = pyqtSignal(str)  # Timestamp string when out point is set
-    pending_in_point_set = pyqtSignal(str)  # Timestamp string when pending in point is set
+    pending_in_point_set = pyqtSignal(
+        str
+    )  # Timestamp string when pending in point is set
     state_changed = pyqtSignal(str)  # State change from timestamp manager
     position_changed = pyqtSignal(float)  # Current position in seconds
 
@@ -36,57 +93,178 @@ class VideoPlayer(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(11, 11, 11, 0)
         self.setLayout(layout)
 
         # Make this widget focusable to receive keyboard events
         self.setFocusPolicy(Qt.StrongFocus)
 
+        # Video widget container (holds video + resize handle)
+        self.video_container = QWidget()
+        self.video_container.setStyleSheet("background-color: #000; min-height: 600px;")
+        self.video_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        video_container_layout = QVBoxLayout()
+        video_container_layout.setContentsMargins(0, 0, 0, 0)
+        video_container_layout.setSpacing(0)
+        self.video_container.setLayout(video_container_layout)
+
         # Video widget (VLC will render here)
         self.video_widget = QWidget()
-        self.video_widget.setStyleSheet("background-color: #000; min-height: 400px;")
-        layout.addWidget(self.video_widget)
+        video_container_layout.addWidget(self.video_widget)
+
+        # Add vertical resize handle on bottom edge
+        self.resize_handle = ResizeHandle(self.video_container)
+        video_container_layout.addWidget(self.resize_handle)
+
+        layout.addWidget(self.video_container)
 
         # Controls
         controls_layout = QHBoxLayout()
 
         # Jump back 15 seconds (left)
         self.jump_back_15_button = QPushButton("-15s")
+        self.jump_back_15_button.setObjectName("jumpButton")
+        self.jump_back_15_button.setMinimumWidth(155)
         self.jump_back_15_button.clicked.connect(self.jump_back_15)
         controls_layout.addWidget(self.jump_back_15_button)
 
         # Jump back 5 seconds
         self.jump_back_5_button = QPushButton("-5s")
+        self.jump_back_5_button.setObjectName("jumpButton")
+        self.jump_back_5_button.setMinimumWidth(155)
         self.jump_back_5_button.clicked.connect(self.jump_back_5)
         controls_layout.addWidget(self.jump_back_5_button)
 
         # Play/Pause button (center)
         self.play_button = QPushButton("Play")
+        self.play_button.setObjectName("playButton")
+        self.play_button.setToolTip("Play / Pause (Space)")
+        self.play_button.setMinimumWidth(170)
         self.play_button.clicked.connect(self.toggle_playback)
         controls_layout.addWidget(self.play_button)
 
         # Stop button (center)
         self.stop_button = QPushButton("Stop")
+        self.stop_button.setObjectName("stopButton")
+        self.stop_button.setToolTip("Stop playback")
+        self.stop_button.setMinimumWidth(170)
         self.stop_button.clicked.connect(self.stop_playback)
         controls_layout.addWidget(self.stop_button)
 
         # Jump forward 5 seconds
         self.jump_forward_5_button = QPushButton("+5s")
+        self.jump_forward_5_button.setObjectName("jumpButton")
+        self.jump_forward_5_button.setMinimumWidth(155)
         self.jump_forward_5_button.clicked.connect(self.jump_forward_5)
         controls_layout.addWidget(self.jump_forward_5_button)
 
         # Jump forward 15 seconds (right)
         self.jump_forward_15_button = QPushButton("+15s")
+        self.jump_forward_15_button.setObjectName("jumpButton")
+        self.jump_forward_15_button.setMinimumWidth(155)
         self.jump_forward_15_button.clicked.connect(self.jump_forward_15)
         controls_layout.addWidget(self.jump_forward_15_button)
 
-        # Time display
+        # Current and total time
+        time_container_wrapper = QHBoxLayout()
+
+        self.time_container = QWidget()
+        self.time_container.setObjectName("timeContainer")
+        time_container_layout = QHBoxLayout()
+        time_container_layout.setContentsMargins(10, 6, 10, 6)
+        time_container_layout.setSpacing(0)
+        self.time_container.setLayout(time_container_layout)
+
         self.time_label = QLabel("00:00:00 / 00:00:00")
-        self.time_label.setMinimumWidth(150)
-        controls_layout.addWidget(self.time_label)
+        self.time_label.setObjectName("timeLabel")
+        time_container_layout.addWidget(
+            self.time_label,
+            alignment=Qt.AlignLeft,
+        )
 
-        layout.addLayout(controls_layout)
+        time_container_wrapper.addWidget(self.time_container)
+        time_container_wrapper.addStretch()
 
-        # Initialize VLC
+        # Row 2: time label followed by centered playback buttons
+        control_row = QHBoxLayout()
+        control_row.addWidget(self.time_container)
+        control_row.addStretch(1)
+        control_row.addLayout(controls_layout)
+        control_row.addStretch(1)
+
+        layout.addLayout(control_row)
+
+        # Button color theming: green tinted play, red tinted stop, with hover/pressed states
+        # Use object names so only these buttons are affected.
+        self.setStyleSheet(
+            """
+            #playButton {
+                background-color: #2ecc71;
+                color: white;
+                border: 1px solid #27ae60;
+                border-radius: 4px;
+                padding: 6px 10px;
+            }
+            #playButton:hover {
+                background-color: #27ae60;
+            }
+            #playButton:pressed {
+                background-color: #1e8449;
+            }
+
+            #stopButton {
+                background-color: #e74c3c;
+                color: white;
+                border: 1px solid #c0392b;
+                border-radius: 4px;
+                padding: 6px 10px;
+            }
+            #stopButton:hover {
+                background-color: #c0392b;
+            }
+            #stopButton:pressed {
+                background-color: #922b21;
+            }
+
+            #jumpButton {
+                background-color: #5dade2;
+                color: white;
+                border: 1px solid #3498db;
+                border-radius: 4px;
+                padding: 6px 10px;
+            }
+            #jumpButton:hover {
+                background-color: #3498db;
+            }
+            #jumpButton:pressed {
+                background-color: #2874a6;
+            }
+
+            #timeContainer {
+                background-color: #3a3a3a;
+                border: 1px solid #555;
+                border-radius: 6px;
+                border-color: #FFD700;
+            }
+            #timeLabel {
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+                padding-left: 6px;
+                padding-right: 6px;
+            }
+
+            #jumpButton,
+            #playButton,
+            #stopButton {
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            """
+        )
+
+        # Initialize VLC (still renders to the inner video_widget)
         self.vlc.init_vlc(self.video_widget)
 
     def load_video(self, file_path):
@@ -286,16 +464,21 @@ class VideoPlayer(QWidget):
             self.stop_playback()
         except (AttributeError, RuntimeError) as e:
             print(f"Error stopping playback during cleanup: {e}")
-        
+
         try:
             # Then clean up VLC
             self.vlc.cleanup()
         except (AttributeError, RuntimeError) as e:
             print(f"Error during VLC cleanup: {e}")
-        
+
         # Stop timer
         self.position_timer.stop()
 
     def grab_focus(self):
         """Grab keyboard focus for I/O key events"""
         self.setFocus()
+
+    def set_timeline_widget(self, timeline_widget):
+        """Insert the timeline between the video and playback controls."""
+        timeline_widget.setParent(self)
+        self.layout().insertWidget(1, timeline_widget)
