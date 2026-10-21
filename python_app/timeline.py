@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QPointF, QRectF, Qt, pyqtSignal
+from PyQt5.QtCore import QPointF, QRectF, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPen, QPolygonF
 from PyQt5.QtWidgets import (
     QHBoxLayout,
@@ -48,6 +48,13 @@ class TimelineWidget(QWidget):
             "background-color: #333; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px;"
         )
         self.drag_label.hide()
+
+        # Rate-limiting for seek events to prevent overwhelming the decoder
+        self.seek_debounce_timer = QTimer()
+        self.seek_debounce_timer.setSingleShot(True)
+        self.seek_debounce_timer.setInterval(50)  # 50ms debounce
+        self.seek_debounce_timer.timeout.connect(self.emit_debounced_seek)
+        self.pending_seek_position = None
 
     def set_duration(self, duration):
         """Set total video duration in seconds"""
@@ -103,6 +110,12 @@ class TimelineWidget(QWidget):
         minutes = int((seconds % 3600) // 60)
         secs = int(seconds % 60)
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+    def emit_debounced_seek(self):
+        """Emit the pending seek position after debounce timer"""
+        if self.pending_seek_position is not None:
+            self.position_clicked.emit(self.pending_seek_position)
+            self.pending_seek_position = None
 
     def get_major_interval(self, duration):
         """Calculate optimal major tick interval based on video duration"""
@@ -260,9 +273,10 @@ class TimelineWidget(QWidget):
         self.drag_start_x = x
         self.drag_started.emit()
 
-        # Always emit position for seeking
+        # Always emit position for seeking (with debounce)
         position = max(0, min(1, position))
-        self.position_clicked.emit(position)
+        self.pending_seek_position = position
+        self.seek_debounce_timer.start()
 
         # Show drag label with current time
         if self.duration > 0:
@@ -293,10 +307,11 @@ class TimelineWidget(QWidget):
             # Clamp to valid range
             new_position = max(0, min(1, new_position))
 
-            # Emit position for seeking
-            self.position_clicked.emit(new_position)
+            # Emit position for seeking (with debounce to prevent overwhelming decoder)
+            self.pending_seek_position = new_position
+            self.seek_debounce_timer.start()
 
-            # Update drag label position and text
+            # Update drag label position and text (always update label for smooth UI)
             if self.duration > 0:
                 current_time = new_position * self.duration
                 time_str = self.format_time(current_time)
@@ -313,6 +328,14 @@ class TimelineWidget(QWidget):
         """Handle mouse release on timeline"""
         self.is_dragging = False
         self.drag_label.hide()
+
+        # Emit final position immediately (skip debounce)
+        if self.seek_debounce_timer.isActive():
+            self.seek_debounce_timer.stop()
+            if self.pending_seek_position is not None:
+                self.position_clicked.emit(self.pending_seek_position)
+                self.pending_seek_position = None
+
         self.drag_ended.emit()
 
 
