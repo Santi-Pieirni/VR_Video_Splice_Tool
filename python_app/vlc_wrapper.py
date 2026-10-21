@@ -23,8 +23,11 @@ class VLCWrapper(QObject):
         self.video_widget = video_widget
 
         try:
-            # Create VLC instance
-            self.instance = vlc.Instance()
+            # Create VLC instance with options to improve seeking stability
+            # --input-fast-seek: Faster seeking (may be less precise but more stable)
+            # --no-sout-audio: Disable audio output during seeking
+            # --network-caching=1000: Reduce network caching for faster seeks
+            self.instance = vlc.Instance('--input-fast-seek', '--no-sout-audio')
             self.player = self.instance.media_player_new()
 
             # Set the video widget to render to
@@ -181,32 +184,46 @@ class VLCWrapper(QObject):
             return False
 
     def seek_to_time(self, seconds):
-        """Seek to a specific time in seconds"""
+        """Seek to a specific time in seconds with keyframe alignment"""
         if self.player is None:
             return False
 
         try:
-            # VLC uses milliseconds
-            self.player.set_time(int(seconds * 1000))
+            # Use position-based seeking (keyframe-aligned) instead of exact time
+            # This lands on the nearest keyframe, avoiding HEVC reference frame issues
+            duration = self.player.get_length() / 1000
+            if duration > 0:
+                position = max(0, min(1, seconds / duration))
+                self.player.set_position(position)
+
+                # Give VLC time to process the keyframe seek
+                QCoreApplication.processEvents()
+
             return True
         except (AttributeError, OSError) as e:
             print(f"Time seek error: {e}")
             return False
 
     def jump_by_seconds(self, seconds):
-        """Jump by a specific number of seconds"""
+        """Jump by a specific number of seconds with keyframe alignment"""
         if self.player is None:
             return False
 
         try:
-            length = self.player.get_length()
-            current = self.player.get_time()
+            # Use position-based seeking for consistency with seek_to_time
+            duration = self.player.get_length() / 1000
+            current = self.player.get_time() / 1000
 
-            if current < 0 or length <= 0:
+            if current < 0 or duration <= 0:
                 return False
 
-            new_time = max(0, min(length, current + seconds * 1000))
-            self.player.set_time(int(new_time))
+            new_time = max(0, min(duration, current + seconds))
+            position = new_time / duration
+            self.player.set_position(position)
+
+            # Give VLC time to process the keyframe seek
+            QCoreApplication.processEvents()
+
             return True
 
         except (AttributeError, OSError) as e:

@@ -291,7 +291,7 @@ class VideoPlayer(QWidget):
         """Start video playback"""
         if self.vlc.start_playback():
             self.play_button.setText("Pause")
-            self.position_timer.start(100)  # Update every 100ms
+            self.position_timer.start(20)  # Update every 20ms
 
     def pause_playback(self):
         """Pause video playback"""
