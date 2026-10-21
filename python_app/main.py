@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QProgressBar,
     QSizePolicy,
     QVBoxLayout,
     QHBoxLayout,
@@ -26,6 +27,7 @@ class FFmpegWorker(QObject):
 
     progress_updated = pyqtSignal(str)
     operation_complete = pyqtSignal(bool, str)
+    progress_percentage = pyqtSignal(int)
     finished = pyqtSignal()
 
     def __init__(self, input_video, segments):
@@ -39,6 +41,7 @@ class FFmpegWorker(QObject):
             handler = FFmpegHandler()
             handler.progress_updated.connect(self.progress_updated)
             handler.operation_complete.connect(self.operation_complete)
+            handler.progress_percentage.connect(self.progress_percentage)
             handler.process_video(self.input_video, self.segments, "output")
         except (RuntimeError, OSError, ValueError) as exc:
             # Narrow exceptions to expected types; report back to UI
@@ -205,11 +208,35 @@ class VRSplicerApp(QMainWindow):
         self.progress_label.setStyleSheet("color: #dce8ef; font-size: 10px;")
         ffmpeg_layout.addWidget(self.progress_label)
 
+        # Progress bar
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setMinimum(0)
+        self.progress_bar.setMaximum(100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #555;
+                border-radius: 4px;
+                text-align: center;
+                background-color: #2a2a2a;
+                color: white;
+                font-size: 10px;
+            }
+            QProgressBar::chunk {
+                background-color: #6c5ce7;
+                border-radius: 3px;
+            }
+        """)
+        self.progress_bar.setVisible(False)
+        ffmpeg_layout.addWidget(self.progress_bar)
+
         layout.addLayout(ffmpeg_layout)
 
         # Connect FFmpeg signals
         self.ffmpeg_handler.progress_updated.connect(self.on_progress_updated)
         self.ffmpeg_handler.operation_complete.connect(self.on_operation_complete)
+        self.ffmpeg_handler.progress_percentage.connect(self.on_progress_percentage)
 
         # Connect video player signals for timestamp tracking
         self.video_player.in_point_set.connect(self.on_in_point_set)
@@ -388,6 +415,10 @@ class VRSplicerApp(QMainWindow):
         self.progress_label.setText(message)
         self.progress_label.setStyleSheet("color: #dce8ef; font-size: 10px;")
 
+    def on_progress_percentage(self, percentage):
+        """Handle FFmpeg progress percentage updates"""
+        self.progress_bar.setValue(percentage)
+
     def on_operation_complete(self, success, message):
         """Handle FFmpeg operation completion"""
         if self.close_requested:
@@ -400,6 +431,7 @@ class VRSplicerApp(QMainWindow):
             self.progress_label.setText(f"✗ Error: {message}")
             self.progress_label.setStyleSheet("color: #e74c3c; font-size: 10px; font-weight: bold;")
 
+        self.progress_bar.setVisible(False)
         self.process_button.setEnabled(True)
 
     def process_video(self):
@@ -407,6 +439,7 @@ class VRSplicerApp(QMainWindow):
         if not self.current_video:
             self.progress_label.setText("✗ No video selected")
             self.progress_label.setStyleSheet("color: #e74c3c; font-size: 10px; font-weight: bold;")
+            self.progress_bar.setVisible(False)
             return
 
         timestamps = self.video_player.get_timestamps()
@@ -416,11 +449,13 @@ class VRSplicerApp(QMainWindow):
         if not in_points or not out_points:
             self.progress_label.setText("✗ No segments defined")
             self.progress_label.setStyleSheet("color: #e74c3c; font-size: 10px; font-weight: bold;")
+            self.progress_bar.setVisible(False)
             return
 
         if len(in_points) != len(out_points):
             self.progress_label.setText(f"✗ Incomplete segments")
             self.progress_label.setStyleSheet("color: #e74c3c; font-size: 10px; font-weight: bold;")
+            self.progress_bar.setVisible(False)
             return
 
         segments = list(zip(in_points, out_points))
@@ -431,6 +466,8 @@ class VRSplicerApp(QMainWindow):
         self.process_button.setEnabled(False)
         self.progress_label.setText(f"Processing {len(segments)} segments...")
         self.progress_label.setStyleSheet("color: #dce8ef; font-size: 10px;")
+        self.progress_bar.setValue(0)
+        self.progress_bar.setVisible(True)
 
         self.ffmpeg_thread = QThread()
         self.ffmpeg_worker = FFmpegWorker(self.current_video, segments)
@@ -439,6 +476,7 @@ class VRSplicerApp(QMainWindow):
         self.ffmpeg_thread.started.connect(self.ffmpeg_worker.run)
         self.ffmpeg_worker.progress_updated.connect(self.on_progress_updated)
         self.ffmpeg_worker.operation_complete.connect(self.on_operation_complete)
+        self.ffmpeg_worker.progress_percentage.connect(self.on_progress_percentage)
         self.ffmpeg_worker.finished.connect(self.ffmpeg_thread.quit)
         self.ffmpeg_thread.finished.connect(self.on_ffmpeg_thread_finished)
 

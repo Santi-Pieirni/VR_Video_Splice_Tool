@@ -13,6 +13,7 @@ class FFmpegHandler(QObject):
     progress_updated = pyqtSignal(str)
     operation_complete = pyqtSignal(bool, str)
     segment_created = pyqtSignal(str)
+    progress_percentage = pyqtSignal(int)
 
     def __init__(self, ffmpeg_path="C:\\ffmpeg\\bin\\ffmpeg.exe"):
         super().__init__()
@@ -231,6 +232,8 @@ class FFmpegHandler(QObject):
             input_name = Path(input_video).stem
             output_file = f"Spliced_{input_name}.mp4"
             segment_files = []
+            total_steps = len(segments) + 1  # segments + final splice
+
             for i, (start, end) in enumerate(segments):
                 segment_file = self.current_operation_dir / f"segment_{i + 1}.mp4"
                 segment_files.append(segment_file)
@@ -239,11 +242,16 @@ class FFmpegHandler(QObject):
                         False, f"Failed to create segment {i + 1}"
                     )
                     return False
+                # Emit progress after each segment
+                progress = int((i + 1) / total_steps * 100)
+                self.progress_percentage.emit(progress)
 
             if not self.splice_segments(input_video, segment_files, output_file):
                 self.operation_complete.emit(False, "Failed to splice segments")
                 return False
 
+            # Emit 100% completion
+            self.progress_percentage.emit(100)
             self.operation_complete.emit(True, f"Processing complete: {output_file}")
             return True
         except (OSError, RuntimeError, ValueError) as e:
