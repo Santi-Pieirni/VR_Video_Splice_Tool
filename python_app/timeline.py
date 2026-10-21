@@ -517,11 +517,6 @@ class TimelinePanel(QWidget):
         self.timeline.drag_ended.connect(self.drag_ended)
         layout.addWidget(self.timeline)
 
-        # Point status display
-        self.point_status_label = QLabel("Ready")
-        self.point_status_label.setStyleSheet("color: white; font-size: 10px;")
-        layout.addWidget(self.point_status_label)
-
         # Keyboard shortcuts info
         shortcuts_label = QLabel(
             "Shortcuts: Space=Play/Pause, I=Set In Point, O=Set Out Point"
@@ -557,7 +552,6 @@ class TimelinePanel(QWidget):
         """Clear timeline markers and segment list"""
         self.timeline.clear_markers()
         self.segment_list._clear_segments_internal()
-        self.point_status_label.setText("Ready")
 
     def set_pending_marker(self, position):
         """Set pending marker on timeline"""
@@ -583,7 +577,6 @@ class TimelinePanel(QWidget):
         """Handle when all segments are cleared"""
         self.timeline.clear_markers()
         self.timeline.clear_pending_marker()
-        self.point_status_label.setText("Ready")
         self.all_segments_cleared.emit()
 
     def get_segments(self):

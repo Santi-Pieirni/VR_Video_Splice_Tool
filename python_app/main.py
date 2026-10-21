@@ -250,21 +250,16 @@ class VRSplicerApp(QMainWindow):
 
                 # Clear pending markers
                 self.timeline_panel.clear_pending_marker()
-
-                # Reset status label
-                self.timeline_panel.point_status_label.setText("Ready")
             else:
                 print(f"Failed to load video: {file_path}")
 
     def on_in_point_set(self, timestamp):
         """Handle in point set by video player (when segment is completed)"""
         print(f"In point recorded: {timestamp}")
-        self.timeline_panel.point_status_label.setText(f"In point: {timestamp}")
 
     def on_out_point_set(self, timestamp):
         """Handle out point set by video player (when segment is completed)"""
         print(f"Out point recorded: {timestamp}")
-        self.timeline_panel.point_status_label.setText(f"Out point: {timestamp}")
 
         # Update segment list and timeline when we have a complete pair
         self.update_segment_list()
@@ -276,7 +271,6 @@ class VRSplicerApp(QMainWindow):
     def on_pending_in_point_set(self, timestamp):
         """Handle pending in point set by video player"""
         print(f"Pending in point set: {timestamp}")
-        self.timeline_panel.point_status_label.setText(f"Pending in: {timestamp}")
 
         # Show pending marker on timeline
         duration = self.video_player.vlc.get_duration()
@@ -287,10 +281,7 @@ class VRSplicerApp(QMainWindow):
 
     def on_state_changed(self, state):
         """Handle state change from timestamp manager"""
-        if state == "waiting_for_in":
-            self.timeline_panel.point_status_label.setText("Waiting for in point")
-        elif state == "waiting_for_out":
-            self.timeline_panel.point_status_label.setText("Waiting for out point")
+        pass
 
     def on_position_changed(self, position):
         """Handle position change from video player"""
@@ -311,7 +302,6 @@ class VRSplicerApp(QMainWindow):
         self.video_player.reset_active_pair()
         self.sync_timeline_with_current_segments()
         self.timeline_panel.clear_pending_marker()
-        self.timeline_panel.point_status_label.setText("Ready")
         self.video_player.grab_focus()
 
     def on_all_segments_cleared(self):
@@ -319,7 +309,6 @@ class VRSplicerApp(QMainWindow):
         print("All segments cleared")
         self.video_player.clear_timestamps()
         self.timeline_panel.clear_pending_marker()
-        self.timeline_panel.point_status_label.setText("Ready")
         self.video_player.grab_focus()
 
     def sync_timeline_with_current_segments(self):
@@ -398,7 +387,6 @@ class VRSplicerApp(QMainWindow):
         print(f"Progress: {message}")
         self.progress_label.setText(message)
         self.progress_label.setStyleSheet("color: #dce8ef; font-size: 10px;")
-        self.timeline_panel.point_status_label.setText(message)
 
     def on_operation_complete(self, success, message):
         """Handle FFmpeg operation completion"""
@@ -408,11 +396,9 @@ class VRSplicerApp(QMainWindow):
         if success:
             self.progress_label.setText("✓ Processing complete")
             self.progress_label.setStyleSheet("color: #2ecc71; font-size: 10px; font-weight: bold;")
-            self.timeline_panel.point_status_label.setText("✓ Processing complete")
         else:
             self.progress_label.setText(f"✗ Error: {message}")
             self.progress_label.setStyleSheet("color: #e74c3c; font-size: 10px; font-weight: bold;")
-            self.timeline_panel.point_status_label.setText(f"✗ Error: {message}")
 
         self.process_button.setEnabled(True)
 
@@ -421,7 +407,6 @@ class VRSplicerApp(QMainWindow):
         if not self.current_video:
             self.progress_label.setText("✗ No video selected")
             self.progress_label.setStyleSheet("color: #e74c3c; font-size: 10px; font-weight: bold;")
-            self.timeline_panel.point_status_label.setText("✗ No video selected")
             return
 
         timestamps = self.video_player.get_timestamps()
@@ -431,13 +416,11 @@ class VRSplicerApp(QMainWindow):
         if not in_points or not out_points:
             self.progress_label.setText("✗ No segments defined")
             self.progress_label.setStyleSheet("color: #e74c3c; font-size: 10px; font-weight: bold;")
-            self.timeline_panel.point_status_label.setText("✗ No segments defined")
             return
 
         if len(in_points) != len(out_points):
             self.progress_label.setText(f"✗ Incomplete segments")
             self.progress_label.setStyleSheet("color: #e74c3c; font-size: 10px; font-weight: bold;")
-            self.timeline_panel.point_status_label.setText(f"✗ Incomplete segments")
             return
 
         segments = list(zip(in_points, out_points))
@@ -457,7 +440,7 @@ class VRSplicerApp(QMainWindow):
         self.ffmpeg_worker.progress_updated.connect(self.on_progress_updated)
         self.ffmpeg_worker.operation_complete.connect(self.on_operation_complete)
         self.ffmpeg_worker.finished.connect(self.ffmpeg_thread.quit)
-        self.ffmpeg_worker.finished.connect(self.on_ffmpeg_thread_finished)
+        self.ffmpeg_thread.finished.connect(self.on_ffmpeg_thread_finished)
 
         self.ffmpeg_thread.start()
 
