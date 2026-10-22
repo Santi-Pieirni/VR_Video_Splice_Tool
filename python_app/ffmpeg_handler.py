@@ -88,6 +88,98 @@ class FFmpegHandler(QObject):
             print(f"Unexpected OS error when detecting codec: {e}")
             return None
 
+    def extract_video_metadata(self, video_path):
+        """Extract comprehensive video metadata using ffprobe and print to console."""
+        try:
+            cmd = [
+                self.ffprobe_path,
+                "-v",
+                "error",
+                "-show_format",
+                "-show_streams",
+                "-print_format",
+                "json",
+                video_path,
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+            import json
+            metadata = json.loads(result.stdout)
+
+            print("\n" + "="*60)
+            print("VIDEO METADATA")
+            print("="*60)
+
+            # Format information
+            if "format" in metadata:
+                fmt = metadata["format"]
+                print(f"\nFile: {fmt.get('filename', 'N/A')}")
+                print(f"Format: {fmt.get('format_name', 'N/A')}")
+                print(f"File Size: {self._format_bytes(int(fmt.get('size', 0)))}")
+
+                duration = float(fmt.get('duration', 0))
+                print(f"Duration: {self._format_duration(duration)}")
+                print(f"Bitrate: {fmt.get('bit_rate', 'N/A')} bps")
+
+            # Stream information
+            if "streams" in metadata:
+                video_streams = [s for s in metadata["streams"] if s.get("codec_type") == "video"]
+                audio_streams = [s for s in metadata["streams"] if s.get("codec_type") == "audio"]
+
+                # Video streams
+                if video_streams:
+                    print("\n--- VIDEO STREAM(S) ---")
+                    for i, stream in enumerate(video_streams):
+                        print(f"\nStream #{i}:")
+                        print(f"  Codec: {stream.get('codec_name', 'N/A')} ({stream.get('codec_long_name', 'N/A')})")
+                        print(f"  Resolution: {stream.get('width', 'N/A')}x{stream.get('height', 'N/A')}")
+                        print(f"  Aspect Ratio: {stream.get('display_aspect_ratio', 'N/A')}")
+                        print(f"  FPS: {stream.get('r_frame_rate', 'N/A')}")
+                        print(f"  Bitrate: {stream.get('bit_rate', 'N/A')} bps")
+                        print(f"  Profile: {stream.get('profile', 'N/A')}")
+                        print(f"  Level: {stream.get('level', 'N/A')}")
+                        if "side_data_list" in stream:
+                            print(f"  Side Data: {stream['side_data_list']}")
+
+                # Audio streams
+                if audio_streams:
+                    print("\n--- AUDIO STREAM(S) ---")
+                    for i, stream in enumerate(audio_streams):
+                        print(f"\nStream #{i}:")
+                        print(f"  Codec: {stream.get('codec_name', 'N/A')} ({stream.get('codec_long_name', 'N/A')})")
+                        print(f"  Sample Rate: {stream.get('sample_rate', 'N/A')} Hz")
+                        print(f"  Channels: {stream.get('channels', 'N/A')}")
+                        print(f"  Channel Layout: {stream.get('channel_layout', 'N/A')}")
+                        print(f"  Bitrate: {stream.get('bit_rate', 'N/A')} bps")
+                        print(f"  Language: {stream.get('tags', {}).get('language', 'N/A')}")
+
+            print("\n" + "="*60 + "\n")
+            return metadata
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error extracting metadata: {e}")
+            return None
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"Unexpected error extracting metadata: {e}")
+            return None
+
+    def _format_bytes(self, bytes_value):
+        """Format bytes into human-readable format."""
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if bytes_value < 1024.0:
+                return f"{bytes_value:.2f} {unit}"
+            bytes_value /= 1024.0
+        return f"{bytes_value:.2f} TB"
+
+    def _format_duration(self, seconds):
+        """Format duration in seconds to HH:MM:SS.ms format."""
+        if not seconds or seconds < 0:
+            return "N/A"
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = seconds % 60
+        return f"{hours:02d}:{minutes:02d}:{secs:06.3f}"
+
     def get_codec_parameters(self, codec):
         """Get FFmpeg parameters based on codec."""
         if codec == "h264":

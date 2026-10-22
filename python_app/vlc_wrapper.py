@@ -60,13 +60,10 @@ class VLCWrapper(QObject):
             self.duration = self.player.get_length() / 1000
 
             # Apply crop filter for single-eye preview (left half of side-by-side video)
-            # Get video dimensions for explicit pixel cropping
-            # Format: "WIDTHxHEIGHT+X+Y"
             video_width, video_height = self.player.video_get_size()
             print(f"Video dimensions: {video_width}x{video_height}")
 
             if video_width > 0 and video_height > 0:
-                # Crop to left half: width/2 x full height, starting at 0,0
                 crop_width = video_width // 2
                 crop_geometry = f"{crop_width}x{video_height}+0+0"
                 self.player.video_set_crop_geometry(crop_geometry)
@@ -96,7 +93,7 @@ class VLCWrapper(QObject):
             print(f"Error loading video: {e}")
             return False
 
-    def toggle_playback(self):
+     def toggle_playback(self):
         """Toggle between play and pause"""
         if self.player is None:
             return False

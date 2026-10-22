@@ -265,6 +265,9 @@ class VRSplicerApp(QMainWindow):
                 print(f"Video loaded successfully: {file_path}")
                 self.process_button.setEnabled(True)
 
+                # Extract and print metadata to console
+                self.ffmpeg_handler.extract_video_metadata(file_path)
+
                 # Set timeline duration
                 duration = self.video_player.vlc.get_duration()
                 self.timeline_panel.set_duration(duration)
