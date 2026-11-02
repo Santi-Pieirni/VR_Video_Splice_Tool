@@ -104,6 +104,127 @@ class FFmpegHandler(QObject):
         print(f"Unknown codec {codec}, using h264")
         return {"vcodec": "libx264", "crf": "18", "preset": "medium", "tag": ""}
 
+    def get_video_duration(self, video_path):
+        """Get the total duration of the video in seconds using ffprobe."""
+        try:
+            cmd = [
+                self.ffprobe_path,
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                video_path,
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            duration = float(result.stdout.strip())
+            print(f"Video duration: {duration} seconds")
+            return duration
+        except (subprocess.CalledProcessError, ValueError, OSError) as e:
+            print(f"Error getting video duration: {e}")
+            return None
+
+    def detect_keyframes(self, video_path, start_seconds=None, end_seconds=None):
+        """Detect keyframe timestamps in the video using ffprobe.
+        
+        Args:
+            video_path: Path to the video file
+            start_seconds: Optional start time in seconds (scans from this point)
+            end_seconds: Optional end time in seconds (scans until this point)
+        
+        Returns:
+            List of keyframe timestamps in seconds
+        """
+        try:
+            cmd = [
+                self.ffprobe_path,
+                "-v",
+                "error",
+                "-skip_frame",
+                "nokey",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "frame=pkt_pts_time,pict_type",
+                "-of",
+                "csv=p=0",
+            ]
+            
+            # Add time range if specified
+            if start_seconds is not None or end_seconds is not None:
+                interval = ""
+                if start_seconds is not None:
+                    interval += f"{start_seconds}"
+                else:
+                    interval += "0"
+                interval += "%"
+                if end_seconds is not None:
+                    interval += f"{end_seconds}"
+                cmd.extend(["-read_intervals", interval])
+            
+            cmd.append(video_path)
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            
+            keyframes = []
+            for line in result.stdout.strip().split('\n'):
+                if not line:
+                    continue
+                parts = line.split(',')
+                if len(parts) >= 2 and parts[1] == 'I':
+                    try:
+                        keyframes.append(float(parts[0]))
+                    except ValueError:
+                        continue
+            
+            print(f"Detected {len(keyframes)} keyframes in time range")
+            return keyframes
+        except subprocess.CalledProcessError as e:
+            print(f"Error detecting keyframes: {e}")
+            return []
+        except OSError as e:
+            print(f"OS error detecting keyframes: {e}")
+            return []
+
+    def snap_to_keyframe(self, timestamp, keyframes, direction="nearest"):
+        """Snap a timestamp to the nearest keyframe.
+        
+        Args:
+            timestamp: Target timestamp in seconds
+            keyframes: List of keyframe timestamps
+            direction: 'nearest', 'before', or 'after'
+        
+        Returns:
+            Snapped timestamp in seconds
+        """
+        if not keyframes:
+            return timestamp
+        
+        if direction == "before":
+            # Find the last keyframe before or at the timestamp
+            for kf in reversed(keyframes):
+                if kf <= timestamp:
+                    return kf
+            return keyframes[0]  # Fallback to first keyframe
+        elif direction == "after":
+            # Find the first keyframe after or at the timestamp
+            for kf in keyframes:
+                if kf >= timestamp:
+                    return kf
+            return keyframes[-1]  # Fallback to last keyframe
+        else:  # nearest
+            # Find the closest keyframe
+            closest = min(keyframes, key=lambda kf: abs(kf - timestamp))
+            return closest
+
+    def format_seconds_to_hms(self, seconds):
+        """Convert seconds to HH:MM:SS format."""
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
     def create_segment(
         self, input_video, start_time, end_time, output_file, codec=None
     ):
@@ -221,7 +342,7 @@ class FFmpegHandler(QObject):
                 print(f"Error cleaning up {temp_file}: {e}")
 
     def process_video(self, input_video, segments, output_name):
-        """Create, concatenate, and clean up video segments."""
+        """Create, concatenate, and clean up video segments with keyframe alignment."""
         try:
             self.progress_updated.emit(f"Starting video processing for {input_video}")
             self.temp_root.mkdir(parents=True, exist_ok=True)
@@ -232,12 +353,64 @@ class FFmpegHandler(QObject):
             input_name = Path(input_video).stem
             output_file = f"Spliced_{input_name}.mp4"
             segment_files = []
+            
+            # Get video duration to cap scan ranges
+            video_duration = self.get_video_duration(input_video)
+            
             total_steps = len(segments) + 1  # segments + final splice
 
             for i, (start, end) in enumerate(segments):
+                # Parse timestamps to seconds
+                start_seconds = self.calculate_duration("00:00:00", start)
+                end_seconds = self.calculate_duration("00:00:00", end)
+                
+                # Detect keyframes only in a small window around this segment
+                # Use 10-second buffer on each side to catch nearby keyframes
+                buffer = 10
+                scan_start = max(0, start_seconds - buffer)
+                scan_end = end_seconds + buffer
+                
+                # Cap scan_end at video duration if available
+                if video_duration is not None:
+                    scan_end = min(scan_end, video_duration)
+                
+                self.progress_updated.emit(f"Segment {i + 1}: Detecting keyframes in range {self.format_seconds_to_hms(scan_start)} to {self.format_seconds_to_hms(scan_end)}...")
+                keyframes = self.detect_keyframes(input_video, start_seconds=scan_start, end_seconds=scan_end)
+                
+                # Snap to keyframes for clean cuts
+                if keyframes:
+                    snapped_start = self.snap_to_keyframe(start_seconds, keyframes, direction="before")
+                    snapped_end = self.snap_to_keyframe(end_seconds, keyframes, direction="after")
+                    
+                    # Cap snapped_end at video duration if available
+                    if video_duration is not None:
+                        snapped_end = min(snapped_end, video_duration)
+                    
+                    # Validate that snapped times are still valid (end > start)
+                    if snapped_end <= snapped_start:
+                        self.progress_updated.emit(f"Segment {i + 1}: Keyframe snapping produced invalid range, using original timestamps")
+                        start_time = start
+                        end_time = end
+                    else:
+                        # Format back to HH:MM:SS
+                        snapped_start_hms = self.format_seconds_to_hms(snapped_start)
+                        snapped_end_hms = self.format_seconds_to_hms(snapped_end)
+                        
+                        # Check if adjustments were made
+                        if abs(snapped_start - start_seconds) > 0.1 or abs(snapped_end - end_seconds) > 0.1:
+                            adjustment_msg = f"Segment {i + 1}: {start}→{end} adjusted to {snapped_start_hms}→{snapped_end_hms} for keyframe alignment"
+                            self.progress_updated.emit(adjustment_msg)
+                        
+                        start_time = snapped_start_hms
+                        end_time = snapped_end_hms
+                else:
+                    self.progress_updated.emit(f"Segment {i + 1}: Could not detect keyframes, using original timestamps")
+                    start_time = start
+                    end_time = end
+                
                 segment_file = self.current_operation_dir / f"segment_{i + 1}.mp4"
                 segment_files.append(segment_file)
-                if not self.create_segment(input_video, start, end, str(segment_file)):
+                if not self.create_segment(input_video, start_time, end_time, str(segment_file)):
                     self.operation_complete.emit(
                         False, f"Failed to create segment {i + 1}"
                     )
