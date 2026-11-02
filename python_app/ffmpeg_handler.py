@@ -349,6 +349,8 @@ class FFmpegHandler(QObject):
                 "copy",
                 "-map_metadata",
                 "0",
+                "-movflags",
+                "faststart",
                 output_file,
             ]
             self.progress_updated.emit(f"Running FFmpeg: {' '.join(cmd)}")
@@ -398,8 +400,8 @@ class FFmpegHandler(QObject):
                 end_seconds = self.parse_hms_to_seconds(end)
 
                 # Detect keyframes only in a small window around this segment.
-                # Use 10-second buffer on each side to catch nearby keyframes.
-                buffer = 10
+                # Use 20-second buffer on each side to catch nearby keyframes.
+                buffer = 20
                 scan_start = max(0.0, start_seconds - buffer)
                 scan_end = end_seconds + buffer
 
